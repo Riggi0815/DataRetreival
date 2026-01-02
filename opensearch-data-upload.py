@@ -39,9 +39,12 @@ def convert_position(pos_str):
         document_mapping["pos"]["raw_pos"] = pos_str
         group_and_phase = string + " " + group
         document_mapping["pos"]["group"] = group_and_phase
-        print(document_mapping)
     
 def convert_mark(mark_str, file_name): 
+    if "h" in mark_str:
+        print(f"Convert Mark: {mark_str}")
+        mark_str = mark_str.replace("h", "0")
+        print(f"Nach Ersetzung: {mark_str}")
     
     if mark_str == "":
         document_mapping["mark"]["raw_value"] = None
@@ -148,7 +151,6 @@ def convert_mark(mark_str, file_name):
 
 def calculate_age_at_comp(date_venue, dob):
     from datetime import datetime
-    
     if dob == "" or date_venue == "":
         document_mapping["age_at_competition"] = None
         document_mapping["dob"] = None
@@ -162,14 +164,19 @@ def calculate_age_at_comp(date_venue, dob):
     }
     
     def to_date(date_str):
-        day, month_str, year = date_str.split()
-        month = month_map[month_str.upper()]
-        return datetime(int(year), month, int(day))
+        number_of_chars = len(date_str)
+        if number_of_chars == 11:
+            day, month_str, year = date_str.split()
+            month = month_map[month_str.upper()]
+            return datetime(int(year), month, int(day))
+        elif number_of_chars == 4:
+            year = date_str
+            return datetime(int(year), 1, 1)
          
     dob_date = to_date(dob)
     comp_date = to_date(date_venue)
     
-    print(f"Geburtsdatum: {dob_date}, Wettkampdatum: {comp_date}")
+    #print(f"Geburtsdatum: {dob_date}, Wettkampdatum: {comp_date}")
     
      # Altersberechnung
     alter = comp_date.year - dob_date.year
@@ -184,31 +191,80 @@ def calculate_age_at_comp(date_venue, dob):
 
 def convert_venue(venue_str):
     # Venue kann Land(in Klammern), Stadt und eventuell Stadion enthalten
-    # TODO: Es könnten auch zwei Kommas sein dann das in der Mitte ist Löschen
-    print(f"Ursprünglicher Venue-String: {venue_str}")
+    
     if venue_str is None or venue_str == "":
         return
     
-    if "," in venue_str:
+    number_of_commas = venue_str.count(",")
+    
+    if number_of_commas == 0:
+        klammer_start = venue_str.find("(")
+        
+        vor_klammer = venue_str[:klammer_start].strip()
+        in_klammer = venue_str[klammer_start:].strip("()")
+        document_mapping["venue"]["venue_raw"] = venue_str
+        document_mapping["venue"]["city"] = vor_klammer
+        document_mapping["venue"]["country"] = in_klammer
+        document_mapping["venue"]["extra"] = ""
+        document_mapping["venue"]["stadium"] = ""
+        return 
+    
+    if number_of_commas == 1:
         stadium, rest = venue_str.split(",", 1)
         klammer_start = rest.find("(")
         
         vor_klammer = rest[:klammer_start].strip()
         in_klammer = rest[klammer_start:].strip("()")
+        document_mapping["venue"]["venue_raw"] = venue_str
+        document_mapping["venue"]["city"] = vor_klammer
+        document_mapping["venue"]["country"] = in_klammer
+        document_mapping["venue"]["extra"] = ""
+        document_mapping["venue"]["stadium"] = stadium.strip()
         
-        print(stadium)
-        print(vor_klammer)
-        print(in_klammer)
         return
+    elif number_of_commas == 2:
+        stadium, city, rest = venue_str.split(",", 2)
+        klammer_start = rest.find("(")
+        vor_klammer = rest[:klammer_start].strip()
+        in_klammer = rest[klammer_start:].strip("()")
+        document_mapping["venue"]["venue_raw"] = venue_str
+        document_mapping["venue"]["city"] = city.strip()
+        document_mapping["venue"]["country"] = in_klammer
+        document_mapping["venue"]["extra"] = vor_klammer
+        document_mapping["venue"]["stadium"] = stadium.strip()
+        return
+        
+def add_rest(competitor_str, nat_str, gender_folder, file_name, wold_rank):   
+    if competitor_str == "":
+        document_mapping["competitor"] = None
     else:
-        klammer_start = venue_str.find("(")
-        vor_klammer = venue_str[:klammer_start].strip()
-        in_klammer = venue_str[klammer_start:].strip("()")
-        print(vor_klammer)
-        print(in_klammer)
-        return
+        document_mapping["competitor"] = competitor_str
         
+    if nat_str == "":
+        document_mapping["nat"] = None
+    else:
+        document_mapping["nat"] = nat_str   
         
+    document_mapping["discipline"] = file_name.replace(".csv","")
+    document_mapping["gender"] = gender_folder.capitalize()  
+    document_mapping["world_rank"] = wold_rank
+  
+    
+def add_index(client, index_name, document_id, document_body):
+    try:
+        response = client.index(
+            index=index_name,
+            id=document_id,
+            body=document_body
+        )
+        
+        print(f"Dokument erfolgreich erstellt!")
+        print(f"Index: {response['_index']}")
+        print(f"ID: {response['_id']}")
+        print(f"Version: {response['_version']}")
+    
+    except Exception as e: 
+        print(f"Fehler beim Erstellen des Dokuments: {e}")
     
 phases = {
     "f": "Finale",
@@ -251,12 +307,13 @@ document_mapping = {
         "numeric_pos": int,
         "group": str,
         },
-    "rank": int,
+    "world_rank": int,
     "venue":{
         "venue_raw": str,
         "city": str,
         "country": str,
         "stadium": str,
+        "extra": str,
     },
     "wind": float,
 }
@@ -297,9 +354,14 @@ for folder_name in ["men","women"]:
                             convert_mark(row[0], file_name)
                             calculate_age_at_comp(row[6], row[2])
                             convert_venue(row[5])
+                            if row[7] != "":
+                                document_mapping["wind"] = row[7]
+                            print("Add Rest")
+                            add_rest(row[1], row[3], folder_name, file_name, row_num)
+                            add_index(client, index_name, id_number, document_mapping)
                             print(document_mapping)
                             id_number += 1
-                            break  # Nur die erste Datenzeile verarbeiten
+                            #break  # Nur die erste Datenzeile verarbeiten
                             
                 except Exception as e:
                     print(f"Fehler beim Lesen der Datei {file_name}: {e}")
