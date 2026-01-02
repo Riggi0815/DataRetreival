@@ -7,26 +7,27 @@ import sys
 
 def convert_position(pos_str):
     
-    if  pos_str is "":
+    if pos_str is "":
+        print("Leere Position")
         document_mapping["pos"]["numeric_pos"] = None
         document_mapping["pos"]["raw_pos"] = None
         document_mapping["pos"]["group"] = None
         return
     
-    if isinstance(pos_str, str):
-        if "." in pos_str:
-            document_mapping["pos"]["numeric_pos"] = pos_str.split(".")[0]
-            document_mapping["pos"]["raw_pos"] = pos_str.split(".")[0]
-            document_mapping["pos"]["group"] = None
-            return
+    if "." in pos_str:
+        document_mapping["pos"]["numeric_pos"] = pos_str.split(".")[0]
+        document_mapping["pos"]["raw_pos"] = pos_str.split(".")[0]
+        document_mapping["pos"]["group"] = None
+        return
     
     if pos_str.isdigit():
+        print(f"Position als Zahl: {pos_str}")
         document_mapping["pos"]["numeric_pos"] = int(pos_str)
         document_mapping["pos"]["raw_pos"] = pos_str
         document_mapping["pos"]["group"] = None
         return
     
-    
+    print(f"Position mit Gruppe: {pos_str}")
     pattern = r'^(\d+)([a-zA-Z]+)(\d+)$'
     match = re.match(pattern, pos_str)
     if match:
@@ -138,7 +139,7 @@ def convert_mark(mark_str, file_name):
         
         # 2 doppelpunkte und 1 punkt -> Stunden:Minuten:Sekunden.Millisekunden
         if number_of_colons == 2 and number_of_dots == 1:
-            hours, minutes, seconds, rest = mark_str.split(":")
+            hours, minutes, rest = mark_str.split(":")
             seconds, milliseconds = rest.split(".")
             total_seconds = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
             total_time = f"{total_seconds}.{milliseconds}"
@@ -169,6 +170,10 @@ def calculate_age_at_comp(date_venue, dob):
             day, month_str, year = date_str.split()
             month = month_map[month_str.upper()]
             return datetime(int(year), month, int(day))
+        if number_of_chars == 8:
+            month_str, year = date_str.split()
+            month = month_map[month_str.upper()]
+            return datetime(int(year), month, 1)
         elif number_of_chars == 4:
             year = date_str
             return datetime(int(year), 1, 1)
@@ -271,6 +276,7 @@ phases = {
     "h": "Vorrunde",
     "er": "Extra",
     "sf": "Halbfinale",
+    "sr": "Halbfinale",
     "pr": "Vorausscheid",
     "ce": "Kombiniert",
     "qf": "Viertelfinale",
@@ -345,24 +351,27 @@ for folder_name in ["men","women"]:
                         header = next(csv_reader, None)
                         if header:
                             print(f"Ordner: {folder_name} | Spaltenüberschriften: {header}")
-                            for index in header:
-                                if index in bad_words:
-                                    print(f" - {index}")
                             
                         for row_num, row in enumerate(csv_reader, 1):
+                            print(f"\n Verarbeitung Zeile {row_num}: {row}")
+                            print(f"convert_position {row[4]}")
                             convert_position(row[4])
+                            print(f"convert_mark")
                             convert_mark(row[0], file_name)
+                            print("calculate_age_at_comp")
                             calculate_age_at_comp(row[6], row[2])
+                            print("convert_venue")
                             convert_venue(row[5])
-                            if row[7] != "":
+                            if len(row) > 7:
                                 document_mapping["wind"] = row[7]
                             print("Add Rest")
                             add_rest(row[1], row[3], folder_name, file_name, row_num)
-                            add_index(client, index_name, id_number, document_mapping)
+                            #add_index(client, index_name, id_number, document_mapping)
                             print(document_mapping)
                             id_number += 1
                             #break  # Nur die erste Datenzeile verarbeiten
                             
                 except Exception as e:
                     print(f"Fehler beim Lesen der Datei {file_name}: {e}")
+                    sys.exit()
     
