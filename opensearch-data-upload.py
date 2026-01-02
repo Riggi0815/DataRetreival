@@ -1,14 +1,13 @@
 import csv
 import os
 from time import sleep
-from opensearchpy import OpenSearch
+from opensearchpy import OpenSearch, helpers
 import re
 import sys
 
 def convert_position(pos_str):
     
     if pos_str is "":
-        print("Leere Position")
         document_mapping["pos"]["numeric_pos"] = None
         document_mapping["pos"]["raw_pos"] = None
         document_mapping["pos"]["group"] = None
@@ -21,13 +20,11 @@ def convert_position(pos_str):
         return
     
     if pos_str.isdigit():
-        print(f"Position als Zahl: {pos_str}")
         document_mapping["pos"]["numeric_pos"] = int(pos_str)
         document_mapping["pos"]["raw_pos"] = pos_str
         document_mapping["pos"]["group"] = None
         return
     
-    print(f"Position mit Gruppe: {pos_str}")
     pattern = r'^(\d+)([a-zA-Z]+)(\d+)$'
     match = re.match(pattern, pos_str)
     if match:
@@ -43,9 +40,7 @@ def convert_position(pos_str):
     
 def convert_mark(mark_str, file_name): 
     if "h" in mark_str:
-        print(f"Convert Mark: {mark_str}")
         mark_str = mark_str.replace("h", "0")
-        print(f"Nach Ersetzung: {mark_str}")
     
     if mark_str == "":
         document_mapping["mark"]["raw_value"] = None
@@ -255,21 +250,32 @@ def add_rest(competitor_str, nat_str, gender_folder, file_name, wold_rank):
     document_mapping["world_rank"] = wold_rank
   
     
-def add_index(client, index_name, document_id, document_body):
+def bulk_index_documents(client, index_name, documents):
+    """
+    Indexiert eine Liste von Dokumenten im Bulk
+    """
     try:
-        response = client.index(
-            index=index_name,
-            id=document_id,
-            body=document_body
-        )
+        # Vorbereitung der Dokumente für Bulk-Operation
+        bulk_data = []
+        for doc_id, doc_body in documents:
+            action = {
+                "_index": index_name,
+                "_id": doc_id,
+                "_source": doc_body
+            }
+            bulk_data.append(action)
         
-        print(f"Dokument erfolgreich erstellt!")
-        print(f"Index: {response['_index']}")
-        print(f"ID: {response['_id']}")
-        print(f"Version: {response['_version']}")
+        # Bulk-Indexierung durchführen
+        response = helpers.bulk(client, bulk_data)
+        print(f"Bulk-Indexierung erfolgreich: {response[0]} Dokumente indexiert")
+        
+        if response[1]:  # Fehler vorhanden
+            print(f"Fehler bei {len(response[1])} Dokumenten:")
+            for error in response[1]:
+                print(f"  - {error}")
     
-    except Exception as e: 
-        print(f"Fehler beim Erstellen des Dokuments: {e}")
+    except Exception as e:
+        print(f"Fehler bei Bulk-Indexierung: {e}")
     
 phases = {
     "f": "Finale",
@@ -329,6 +335,8 @@ good_words = ["Mark","WIND","Competitor","DOB","Nat","Pos","Venue","Date"]
 
 id_number = 1
 index_name = "sport-results"
+bulk_documents = []  # Liste für Bulk-Dokumente
+bulk_size = 1000     # Anzahl Dokumente pro Bulk-Operation
 
 data_path = "data"
 # Durchsuche die Verzeichnisse
@@ -351,27 +359,70 @@ for folder_name in ["men","women"]:
                         header = next(csv_reader, None)
                         if header:
                             print(f"Ordner: {folder_name} | Spaltenüberschriften: {header}")
+                            for index in header:
+                                if index in bad_words:
+                                    print(f" - {index}")
                             
                         for row_num, row in enumerate(csv_reader, 1):
+                            # Erstelle eine Kopie der document_mapping für jedes Dokument
+                            current_document = {
+                                "age_at_competition": None,
+                                "competitor": None,
+                                "date": None,
+                                "discipline": None,
+                                "dob": None,
+                                "gender": None,
+                                "mark": {
+                                    "raw_value": None,
+                                    "display_value": None,
+                                    "numeric_value": None,
+                                    "unit": None,
+                                    "format_type": None,
+                                },
+                                "nat": None,
+                                "pos": {
+                                    "raw_pos": None,
+                                    "numeric_pos": None,
+                                    "group": None,
+                                },
+                                "world_rank": None,
+                                "venue": {
+                                    "venue_raw": None,
+                                    "city": None,
+                                    "country": None,
+                                    "stadium": None,
+                                    "extra": None,
+                                },
+                                "wind": None,
+                            }
+                            
+                            # Temporär document_mapping auf current_document setzen
+                            document_mapping = current_document
                             print(f"\n Verarbeitung Zeile {row_num}: {row}")
-                            print(f"convert_position {row[4]}")
                             convert_position(row[4])
-                            print(f"convert_mark")
                             convert_mark(row[0], file_name)
-                            print("calculate_age_at_comp")
                             calculate_age_at_comp(row[6], row[2])
-                            print("convert_venue")
                             convert_venue(row[5])
                             if len(row) > 7:
-                                document_mapping["wind"] = row[7]
-                            print("Add Rest")
+                                if row[7] != "":
+                                    document_mapping["wind"] = float(row[7])
                             add_rest(row[1], row[3], folder_name, file_name, row_num)
-                            #add_index(client, index_name, id_number, document_mapping)
-                            print(document_mapping)
+                            
+                            # Füge Dokument zur Bulk-Liste hinzu
+                            bulk_documents.append((id_number, document_mapping.copy()))
                             id_number += 1
-                            #break  # Nur die erste Datenzeile verarbeiten
+                            
+                            # Wenn Bulk-Größe erreicht, indexiere die Dokumente
+                            if len(bulk_documents) >= bulk_size:
+                                print(f"Indexiere {len(bulk_documents)} Dokumente...")
+                                bulk_index_documents(client, index_name, bulk_documents)
+                                bulk_documents.clear()  # Liste leeren
                             
                 except Exception as e:
                     print(f"Fehler beim Lesen der Datei {file_name}: {e}")
                     sys.exit()
-    
+
+# Indexiere verbleibende Dokumente
+if bulk_documents:
+    print(f"Indexiere verbleibende {len(bulk_documents)} Dokumente...")
+    bulk_index_documents(client, index_name, bulk_documents)
