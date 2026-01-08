@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'filter_sheet.dart';
 
-class CustomSearchBar extends StatelessWidget {
+class CustomSearchBar extends StatefulWidget {
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
   final String hintText;
@@ -13,6 +13,11 @@ class CustomSearchBar extends StatelessWidget {
     this.hintText = "Sportler, Disziplin oder Ort",
   });
 
+  @override
+  State<CustomSearchBar> createState() => _CustomSearchBarState();
+}
+
+class _CustomSearchBarState extends State<CustomSearchBar> {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
@@ -30,9 +35,9 @@ class CustomSearchBar extends StatelessWidget {
           ],
         ),
         child: TextField(
-          controller: controller,
+          controller: widget.controller,
           decoration: InputDecoration(
-            hintText: hintText,
+            hintText: widget.hintText,
             prefixIcon: const Icon(Icons.search),
             suffixIcon: IconButton(
               icon: const Icon(Icons.tune),
@@ -55,7 +60,7 @@ class CustomSearchBar extends StatelessWidget {
               horizontal: 24,
             ),
           ),
-          onSubmitted: onSubmitted,
+          onSubmitted: widget.onSubmitted,
         ),
       ),
     );

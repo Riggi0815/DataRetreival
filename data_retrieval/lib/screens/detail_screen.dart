@@ -1,132 +1,149 @@
-import 'package:data_retrieval/widgets/custom_search_bar.dart';
+import 'package:data_retrieval/services/opensearch_service.dart';
 import 'package:flutter/material.dart';
 
 class DetailScreen extends StatelessWidget {
-  final String athleteName;
-  final String birthDate;
-  final int points;
-  final List<Map<String, String>> competitions;
+  final SearchResult result;
 
   const DetailScreen({
     super.key,
-    this.athleteName = "Max Mustermann",
-    this.birthDate = "01.01.2006",
-    this.points = 1234,
-    this.competitions = const [
-      {
-        "event": "100 m",
-        "place": "1",
-        "location": "Berlin",
-        "result": "12,34 s",
-        "date": "01.05.2024",
-      },
-      {
-        "event": "Weitsprung",
-        "place": "2",
-        "location": "Hamburg",
-        "result": "6,45 m",
-        "date": "12.06.2024",
-      },
-    ],
+    required this.result,
   });
 
   @override
   Widget build(BuildContext context) {
-    final searchController = TextEditingController(text: athleteName);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF6F7FB),
       appBar: AppBar(
-        title: const Text("Detailansicht"),
+        title: const Text("Details"),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SearchBar
-            CustomSearchBar(
-              controller: searchController,
-              onSubmitted: (value) {
-                // Optional: neue Suche starten
-                Navigator.pop(context);
-              },
+            _buildCard(
+              context,
+              title: "Athlet",
+              children: [
+                _buildDetailRow("Name", result.competitor),
+                _buildDetailRow("Geschlecht", _formatGender(result.gender)),
+                _buildDetailRow("Nationalität", result.nat),
+                if (result.dob != null) _buildDetailRow("Geburtsdatum", result.dob!),
+                if (result. ageAtCompetition != null)
+                  _buildDetailRow("Alter bei Wettkampf", "${result. ageAtCompetition} Jahre"),
+                if (result.worldRank != null)
+                  _buildDetailRow("Weltrangliste", "#${result.worldRank}"),
+              ],
             ),
-
             const SizedBox(height: 16),
-
-            // Basisinformationen Card
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 4,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      athleteName,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text("Geburtsdatum: $birthDate"),
-                    const SizedBox(height: 4),
-                    Text("Bewertungspunkte: $points"),
-                  ],
-                ),
-              ),
+            _buildCard(
+              context,
+              title: "Leistung",
+              children: [
+                _buildDetailRow("Disziplin", result.discipline),
+                _buildDetailRow("Ergebnis", result.mark.displayValue),
+                _buildDetailRow("Position", result.pos.rawPos),
+                if (result.wind != null)
+                  _buildDetailRow("Wind", "${result.wind} m/s"),
+              ],
             ),
-
-            const SizedBox(height: 24),
-
-            Text(
-              "Wettkämpfe",
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Wettbewerbe Liste
-            Column(
-              children: competitions.map((competition) {
-                return Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 3,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          competition["event"] ?? "",
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text("Rang: ${competition["place"]}"),
-                        Text("Ort: ${competition["location"]}"),
-                        Text("Ergebnis: ${competition["result"]}"),
-                        Text("Datum: ${competition["date"]}"),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+            const SizedBox(height: 16),
+            _buildCard(
+              context,
+              title: "Wettkampf",
+              children:  [
+                _buildDetailRow("Datum", _formatDate(result.date)),
+                _buildDetailRow("Ort", result.venue.city),
+                if (result.venue.country. isNotEmpty)
+                  _buildDetailRow("Land", result. venue.country),
+                if (result.venue.stadium.isNotEmpty)
+                  _buildDetailRow("Stadion", result. venue.stadium),
+                if (result.venue.extra. isNotEmpty)
+                  _buildDetailRow("Zusatzinfo", result.venue.extra),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildCard(BuildContext context, {required String title, required List<Widget> children}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style:  Theme.of(context).textTheme.titleLarge?. copyWith(
+                fontWeight:  FontWeight.bold,
+              ),
+            ),
+            const Divider(),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding:  const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style:  const TextStyle(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatGender(String gender) {
+    switch (gender. toLowerCase()) {
+      case 'm':
+        return 'Männlich';
+      case 'w':
+      case 'f':
+        return 'Weiblich';
+      case 'd':
+        return 'Divers';
+      default:
+        return gender;
+    }
+  }
+
+  String _formatDate(String date) {
+    try {
+      final parts = date.split('-');
+      if (parts.length == 3) {
+        return "${parts[2]}. ${parts[1]}.${parts[0]}";
+      }
+      return date;
+    } catch (e) {
+      return date;
+    }
   }
 }
