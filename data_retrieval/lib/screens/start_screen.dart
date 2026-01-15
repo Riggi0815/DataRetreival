@@ -1,4 +1,5 @@
 import 'package:data_retrieval/widgets/custom_search_bar.dart';
+import 'package:data_retrieval/widgets/filter_sheet.dart';
 import 'package:flutter/material.dart';
 import 'result_screen.dart';
 
@@ -11,9 +12,10 @@ class StartScreen extends StatefulWidget {
 
 class _StartScreenState extends State<StartScreen> {
   final TextEditingController searchController = TextEditingController();
+  FilterData? _currentFilters;
 
   void _handleSearch(String value) {
-    if (value.trim().isEmpty) {
+    if (value.trim().isEmpty && !(_currentFilters?.hasActiveFilters ?? false)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Das Suchfeld darf nicht leer sein! '),
@@ -27,9 +29,18 @@ class _StartScreenState extends State<StartScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ResultScreen(query: value),
+        builder: (_) => ResultScreen(
+          query: value,
+          initialFilters: _currentFilters,
+        ),
       ),
     );
+  }
+
+  void _handleFilterApplied(FilterData filterData) {
+    setState(() {
+      _currentFilters = filterData;
+    });
   }
 
   @override
@@ -82,14 +93,103 @@ class _StartScreenState extends State<StartScreen> {
                 CustomSearchBar(
                   controller: searchController,
                   onSubmitted: _handleSearch,
+                  onFilterApplied: _handleFilterApplied,
+                  currentFilters: _currentFilters,
                 ),
 
                 const SizedBox(height: 24),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _buildFilterChips(),
+                )
               ],
             ),
           ),
         ),
       ),
     );
+  }
+  List<Widget> _buildFilterChips() {
+    final chips = <Widget>[];
+
+    if (_currentFilters?.firstName != null) {
+      chips.add(_buildChip('Vorname:  ${_currentFilters! .firstName}'));
+    }
+    if (_currentFilters?.lastName != null) {
+      chips.add(_buildChip('Nachname: ${_currentFilters! .lastName}'));
+    }
+    if (_currentFilters?.gender != null) {
+      final genderLabel = _currentFilters!.gender == 'm' ? 'Männlich' : 'Weiblich';
+      chips.add(_buildChip('Geschlecht: $genderLabel'));
+    }
+    if (_currentFilters?.nationality != null) {
+      chips.add(_buildChip('Nationalität: ${_currentFilters! .nationality}'));
+    }
+    if (_currentFilters?.discipline != null) {
+      chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}'));
+    }
+    if (_currentFilters?.venue != null) {
+      chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
+    }
+    if (_currentFilters?.eventDate != null) {
+      final date = _currentFilters!.eventDate! ;
+      chips.add(_buildChip('Datum: ${date. day}. ${date.month}.${date. year}'));
+    }
+    if (_currentFilters?.birthDate != null) {
+      final date = _currentFilters!. birthDate!;
+      chips. add(_buildChip('Geburtstag: ${date.day}.${date.month}.${date.year}'));
+    }
+    if (_currentFilters?.minLength != null || _currentFilters?.maxLength != null) {
+      final min = _currentFilters?. minLength ?? 0;
+      final max = _currentFilters?. maxLength ?? 100;
+      chips.add(_buildChip('Länge: ${min.toInt()}-${max.toInt()}m'));
+    }
+    if (_currentFilters?.minTime != null || _currentFilters?. maxTime != null) {
+      chips.add(_buildChip('Zeit gefiltert'));
+    }
+    if (_currentFilters?.points != null) {
+      chips.add(_buildChip('Punkte: ${_currentFilters! .points}'));
+    }
+
+    // Clear all filters chip
+    if (chips.isNotEmpty) {
+      chips.add(
+        ActionChip(
+          label: const Text('Alle löschen'),
+          onPressed:  () {
+            setState(() {
+              _currentFilters = FilterData();
+            });
+          },
+          backgroundColor: Colors.red. shade100,
+        ),
+      );
+    }
+
+    return chips;
+  }
+
+  Widget _buildChip(String label) {
+    return Chip(
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      backgroundColor: Colors.deepPurple.shade100,
+      side: BorderSide(
+        color: Colors.deepPurple.shade200,
+        width: 1,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 }

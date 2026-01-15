@@ -1,5 +1,6 @@
 import 'package:data_retrieval/widgets/custom_search_bar.dart';
 import 'package:data_retrieval/widgets/result_card.dart';
+import 'package:data_retrieval/widgets/filter_sheet.dart';
 import 'package:flutter/material.dart';
 
 import '../services/opensearch_service.dart';
@@ -7,10 +8,12 @@ import 'detail_screen.dart';
 
 class ResultScreen extends StatefulWidget {
   final String query;
+  final FilterData? initialFilters;
 
   const ResultScreen({
     super.key,
     required this. query,
+    this.initialFilters,
   });
 
   @override
@@ -25,20 +28,23 @@ class _ResultScreenState extends State<ResultScreen> {
   bool _isLoading = true;
   String?  _errorMessage;
   String? _errorDetails;
+  FilterData? _currentFilters;
 
   @override
   void initState() {
     super.initState();
     searchController = TextEditingController(text: widget.query);
+    _currentFilters = widget.initialFilters;
     _performSearch(widget.query);
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
+    if (query.trim().isEmpty && ! (_currentFilters?.hasActiveFilters ?? false)) {
       setState(() {
         _errorMessage = 'Das Suchfeld darf nicht leer sein! ';
         _errorDetails = null;
         _isLoading = false;
+        _results = [];
       });
       return;
     }
@@ -50,27 +56,44 @@ class _ResultScreenState extends State<ResultScreen> {
     });
 
     try {
-      final results = await _searchService.search(query);
+      List<SearchResult> results;
+
+      // Verwende erweiterte Suche wenn Filter gesetzt sind
+      if (_currentFilters?.hasActiveFilters ?? false) {
+        results = await _searchService.advancedSearch(
+          firstName: _currentFilters?.firstName,
+          lastName: _currentFilters?.lastName,
+          gender: _currentFilters?.gender,
+          nationality: _currentFilters?.nationality,
+          discipline: _currentFilters?.discipline,
+          venue: _currentFilters?.venue,
+          date: _currentFilters?.eventDate,
+        );
+      } else if (query.trim().isNotEmpty) {
+        // Normale Textsuche
+        results = await _searchService.search(query);
+      } else {
+        results = [];
+      }
+
       setState(() {
         _results = results;
         _isLoading = false;
       });
     } catch (e, stackTrace) {
       setState(() {
-        _errorMessage = _getReadableErrorMessage(e. toString());
-        _errorDetails = 'Technische Details:\n${e.toString()}\n\nStack Trace:\n${stackTrace. toString()}';
+        _errorMessage = _parseErrorMessage(e. toString());
+        _errorDetails = 'Details:\n$e\n\nStacktrace:\n$stackTrace';
         _isLoading = false;
+        _results = [];
       });
     }
   }
 
-  String _getReadableErrorMessage(String error) {
+  String _parseErrorMessage(String error) {
     if (error.contains('SocketException') || error.contains('Failed host lookup')) {
-      return 'Keine Verbindung zu OpenSearch möglich.\n\n'
-          'Bitte überprüfe:\n'
-          '• Läuft Docker?\n'
-          '• Ist OpenSearch gestartet?  (docker-compose ps)\n'
-          '• Richtige URL in opensearch_service.dart? ';
+      return 'Verbindungsfehler\n\nOpenSearch-Server ist nicht erreichbar.\n'
+          'Stelle sicher, dass der Server läuft (Docker).';
     }
     if (error.contains('Connection refused')) {
       return 'Verbindung abgelehnt.\n\n'
@@ -89,7 +112,7 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   void _handleSearch(String value) {
-    if (value.trim().isEmpty) {
+    if (value.trim().isEmpty && !(_currentFilters?.hasActiveFilters ?? false)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Das Suchfeld darf nicht leer sein!'),
@@ -103,9 +126,19 @@ class _ResultScreenState extends State<ResultScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => ResultScreen(query: value),
+        builder: (_) => ResultScreen(
+          query: value,
+          initialFilters: _currentFilters,
+        ),
       ),
     );
+  }
+
+  void _handleFilterApplied(FilterData filterData) {
+    setState(() {
+      _currentFilters = filterData;
+    });
+    _performSearch(searchController.text);
   }
 
   @override
@@ -120,19 +153,84 @@ class _ResultScreenState extends State<ResultScreen> {
         children: [
           const SizedBox(height: 16),
 
-          // Identische SearchBar wie auf der Startseite
+          // SearchBar mit Filter
           CustomSearchBar(
             controller: searchController,
-            onSubmitted: _handleSearch,
+            onSubmitted:  _handleSearch,
+            onFilterApplied: _handleFilterApplied,
+            currentFilters: _currentFilters,
           ),
 
           const SizedBox(height: 8),
+
+          // Active Filters Chips
+          if (_currentFilters?.hasActiveFilters ?? false)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child:  Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _buildFilterChips(),
+              ),
+            ),
 
           Expanded(
             child: _buildBody(),
           ),
         ],
       ),
+    );
+  }
+
+  List<Widget> _buildFilterChips() {
+    final chips = <Widget>[];
+
+    if (_currentFilters?. firstName != null) {
+      chips.add(_buildChip('Vorname:  ${_currentFilters! .firstName}'));
+    }
+    if (_currentFilters?.lastName != null) {
+      chips.add(_buildChip('Nachname: ${_currentFilters! .lastName}'));
+    }
+    if (_currentFilters?.gender != null) {
+      chips.add(_buildChip('Geschlecht: ${_currentFilters!.gender}'));
+    }
+    if (_currentFilters?. nationality != null) {
+      chips.add(_buildChip('Nationalität: ${_currentFilters!.nationality}'));
+    }
+    if (_currentFilters?. discipline != null) {
+      chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}'));
+    }
+    if (_currentFilters?.venue != null) {
+      chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
+    }
+
+    // Clear all filters chip
+    if (chips.isNotEmpty) {
+      chips.add(
+        ActionChip(
+          label: const Text('Alle löschen'),
+          onPressed:  () {
+            setState(() {
+              _currentFilters = FilterData();
+            });
+            _performSearch(searchController.text);
+          },
+          backgroundColor: Colors.red. shade100,
+        ),
+      );
+    }
+
+    return chips;
+  }
+
+  Widget _buildChip(String label) {
+    return Chip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      backgroundColor: Colors.deepPurple.shade100,
+      //deleteIcon: const Icon(Icons.close, size: 16),
+      onDeleted: () {
+        // Implement individual filter removal if needed
+      },
     );
   }
 
@@ -152,7 +250,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
     if (_errorMessage != null) {
       return Center(
-        child:  SingleChildScrollView(
+        child:  Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -164,27 +262,25 @@ class _ResultScreenState extends State<ResultScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Fehler',
-                style:  Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 16),
-              Text(
                 _errorMessage!,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[800],
+                style: const TextStyle(
                   fontSize: 16,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (_errorDetails != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 ExpansionTile(
                   title: const Text('Technische Details anzeigen'),
                   children:  [
                     Container(
                       padding: const EdgeInsets.all(12),
-                      color: Colors.grey[200],
-                      child: SelectableText(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius:  BorderRadius.circular(8),
+                      ),
+                      child:  SelectableText(
                         _errorDetails!,
                         style:  const TextStyle(
                           fontFamily: 'monospace',
@@ -235,11 +331,13 @@ class _ResultScreenState extends State<ResultScreen> {
               const SizedBox(height: 16),
               Text(
                 'Keine Ergebnisse gefunden',
-                style: Theme. of(context).textTheme.headlineSmall,
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
               Text(
-                'Für "${widget.query}" wurden keine Treffer gefunden.\nVersuche es mit anderen Suchbegriffen.',
+                _currentFilters?.hasActiveFilters ?? false
+                    ? 'Keine Treffer für die gewählten Filter.\nVersuche es mit weniger Filtern.'
+                    : 'Für "${widget.query}" wurden keine Treffer gefunden.\nVersuche es mit anderen Suchbegriffen.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey[600]),
               ),
@@ -252,7 +350,7 @@ class _ResultScreenState extends State<ResultScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical:  8),
           child: Text(
             '${_results.length} Ergebnis${_results.length != 1 ? "se" : ""} gefunden',
             style: TextStyle(
