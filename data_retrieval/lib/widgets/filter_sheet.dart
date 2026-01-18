@@ -1,5 +1,10 @@
-
 import 'package:flutter/material.dart';
+
+enum SearchFieldType {
+  athlete,  // Sportler
+  stadium,  // Stadion
+  city,     // Stadt
+}
 
 class FilterData {
   String? lastName;
@@ -15,22 +20,24 @@ class FilterData {
   TimeOfDay?  maxTime;
   String? points;
   DateTime? birthDate;
+  Set<SearchFieldType> searchFields; // Neue Eigenschaft für Suchfelder
 
   FilterData({
-    this. lastName,
+    this.lastName,
     this.firstName,
-    this.gender,
+    this. gender,
     this.nationality,
-    this. discipline,
+    this.discipline,
     this.venue,
-    this.eventDate,
+    this. eventDate,
     this.minLength,
     this.maxLength,
     this.minTime,
-    this. maxTime,
+    this.maxTime,
     this.points,
     this.birthDate,
-  });
+    Set<SearchFieldType>? searchFields,
+  }) : searchFields = searchFields ?? {};
 
   bool get hasActiveFilters =>
       lastName != null ||
@@ -45,7 +52,8 @@ class FilterData {
           minTime != null ||
           maxTime != null ||
           points != null ||
-          birthDate != null;
+          birthDate != null ||
+          searchFields.isNotEmpty;
 }
 
 class FilterSheet extends StatefulWidget {
@@ -72,8 +80,10 @@ class _FilterSheetState extends State<FilterSheet> {
   double minLengthValue = 0;
   double maxLengthValue = 100;
 
-  TimeOfDay? startTime;
+  TimeOfDay?  startTime;
   TimeOfDay?  endTime;
+
+  Set<SearchFieldType> selectedSearchFields = {}; // Neue State-Variable
 
   final List<String> nationalities = [
     "German",
@@ -86,54 +96,15 @@ class _FilterSheetState extends State<FilterSheet> {
   ];
 
   final List<String> disciplines = [
-    "10000m",
-    "10000m Gehen",
-    "1000m",
     "100m",
-    "100m Huerden",
-    "10km",
-    "10km Gehen",
-    "110m Huerden",
-    "1500m",
-    "15km",
-    "20000m Gehen",
-    "2000m",
-    "2000m Hindernislauf",
     "200m",
-    "20km",
-    "20km Gehen",
-    "3000m",
-    "3000m Gehen",
-    "3000m Hindernislauf",
-    "300m",
-    "30km Gehen",
-    "35km Gehen",
     "400m",
-    "400m Huerden",
-    "4x100m",
-    "4x1500m",
-    "4x200m",
-    "4x400m",
-    "4x800m",
-    "5000m",
-    "5000m Gehen",
-    "50km Gehen",
-    "5km",
-    "5km Gehen",
-    "600m",
     "800m",
-    "Diskuswurf",
-    "Dreisprung",
-    "Halbmarathon 21km",
-    "Hammerwurf",
-    "Hochsprung",
-    "Kugelstossen",
-    "Marathon 42km",
-    "Siebenkampf",
-    "Speerwurf",
-    "Stabhochsprung",
+    "1500m",
     "Weitsprung",
-    "Zehnkampf"
+    "Hochsprung",
+    "Speerwurf",
+    "Kugelstoßen",
   ];
 
   @override
@@ -145,10 +116,11 @@ class _FilterSheetState extends State<FilterSheet> {
     venueController = TextEditingController(text: widget.initialFilters?.venue);
     pointsController = TextEditingController(text: widget. initialFilters?.points);
 
-    selectedGender = widget.initialFilters?.gender;
-    selectedNationality = widget.initialFilters?. nationality;
+    selectedGender = widget.initialFilters?. gender;
+    selectedNationality = widget.initialFilters?.nationality;
     selectedEventDate = widget.initialFilters?.eventDate;
     selectedBirthDate = widget.initialFilters?.birthDate;
+    selectedSearchFields = widget.initialFilters?.searchFields ??  {};
 
     if (widget.initialFilters?.minLength != null) {
       minLengthValue = widget.initialFilters!.minLength!;
@@ -198,15 +170,19 @@ class _FilterSheetState extends State<FilterSheet> {
                     "Filteroptionen",
                     style: TextStyle(
                       fontSize: 20,
-                      fontWeight: FontWeight. bold,
+                      fontWeight:  FontWeight.bold,
                     ),
                   ),
                   IconButton(
-                    icon:  const Icon(Icons.close),
+                    icon: const Icon(Icons.close),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // NEUE SEKTION: Suchfelder spezifizieren
+              _buildSearchFieldsSection(),
               const SizedBox(height:  16),
 
               // Person Section
@@ -236,12 +212,12 @@ class _FilterSheetState extends State<FilterSheet> {
                               "Geschlecht",
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight. w500,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            _buildGenderRadio("Weiblich", "Women"),
-                            _buildGenderRadio("Männlich", "Men"),
+                            _buildGenderRadio("Weiblich", "w"),
+                            _buildGenderRadio("Männlich", "m"),
                           ],
                         ),
                       ),
@@ -313,8 +289,8 @@ class _FilterSheetState extends State<FilterSheet> {
                       text: selectedBirthDate == null
                           ? ""
                           : "${selectedBirthDate!.day. toString().padLeft(2, '0')}/"
-                          "${selectedBirthDate!.month.toString().padLeft(2, '0')}/"
-                          "${selectedBirthDate!.year}",
+                          "${selectedBirthDate!. month.toString().padLeft(2, '0')}/"
+                          "${selectedBirthDate! .year}",
                     ),
                   ),
                 ],
@@ -331,7 +307,7 @@ class _FilterSheetState extends State<FilterSheet> {
                   Autocomplete<String>(
                     initialValue: TextEditingValue(text: disciplineController.text),
                     optionsBuilder: (textEditingValue) {
-                      if (textEditingValue.text. isEmpty) {
+                      if (textEditingValue.text.isEmpty) {
                         return const Iterable<String>.empty();
                       }
                       return disciplines.where((d) =>
@@ -396,7 +372,7 @@ class _FilterSheetState extends State<FilterSheet> {
                                       context:  context,
                                       firstDate: DateTime(1990),
                                       lastDate:  DateTime(2030),
-                                      initialDate:  selectedEventDate ?? DateTime. now(),
+                                      initialDate: selectedEventDate ?? DateTime. now(),
                                     );
                                     if (date != null) {
                                       setState(() => selectedEventDate = date);
@@ -451,8 +427,8 @@ class _FilterSheetState extends State<FilterSheet> {
                   // Längenangabe in Meter
                   const Text(
                     "Längenangabe in Meter",
-                    style:  TextStyle(
-                      fontSize:  14,
+                    style: TextStyle(
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -491,7 +467,7 @@ class _FilterSheetState extends State<FilterSheet> {
                             const SizedBox(height: 4),
                             TextField(
                               readOnly: true,
-                              decoration:  InputDecoration(
+                              decoration: InputDecoration(
                                 hintText: "00:00:00 - n max",
                                 border: const OutlineInputBorder(),
                                 isDense: true,
@@ -509,7 +485,7 @@ class _FilterSheetState extends State<FilterSheet> {
                                 ),
                               ),
                               controller: TextEditingController(
-                                text:  startTime == null && endTime == null
+                                text: startTime == null && endTime == null
                                     ? ""
                                     : "${startTime?. format(context) ?? '00:00:00'} - ${endTime?.format(context) ?? 'n max'}",
                               ),
@@ -525,8 +501,8 @@ class _FilterSheetState extends State<FilterSheet> {
                   TextField(
                     controller: pointsController,
                     decoration: const InputDecoration(
-                      labelText:  "Bewertungspunkte",
-                      hintText:  "Punkte",
+                      labelText: "Bewertungspunkte",
+                      hintText: "Punkte",
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -557,7 +533,7 @@ class _FilterSheetState extends State<FilterSheet> {
                       venue: venueController.text.trim().isEmpty
                           ? null
                           : venueController.text. trim(),
-                      eventDate:  selectedEventDate,
+                      eventDate: selectedEventDate,
                       birthDate: selectedBirthDate,
                       minLength: minLengthValue > 0 ? minLengthValue : null,
                       maxLength: maxLengthValue < 100 ? maxLengthValue : null,
@@ -566,11 +542,12 @@ class _FilterSheetState extends State<FilterSheet> {
                       points: pointsController.text.trim().isEmpty
                           ? null
                           : pointsController.text.trim(),
+                      searchFields: selectedSearchFields,
                     );
                     Navigator.pop(context, filterData);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors. grey.shade700,
+                    backgroundColor: Colors.grey.shade700,
                     foregroundColor:  Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -589,6 +566,119 @@ class _FilterSheetState extends State<FilterSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  // NEUE METHODE: Suchfelder-Sektion
+  Widget _buildSearchFieldsSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade200, width: 2),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.search, size: 24, color: Colors.blue.shade700),
+              const SizedBox(width: 8),
+              Text(
+                "Suche spezifizieren",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors. blue.shade900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Wähle aus, in welchen Feldern gesucht werden soll:",
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height:  12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildSearchFieldChip(
+                label: "Sportler",
+                icon: Icons.person,
+                type: SearchFieldType.athlete,
+              ),
+              _buildSearchFieldChip(
+                label: "Stadion",
+                icon: Icons. stadium,
+                type: SearchFieldType.stadium,
+              ),
+              _buildSearchFieldChip(
+                label: "Stadt",
+                icon: Icons.location_city,
+                type: SearchFieldType.city,
+              ),
+            ],
+          ),
+          if (selectedSearchFields.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                "Keine Auswahl = Suche in allen Feldern",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey. shade600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchFieldChip({
+    required String label,
+    required IconData icon,
+    required SearchFieldType type,
+  }) {
+    final isSelected = selectedSearchFields.contains(type);
+
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: isSelected ? Colors. white : Colors.blue.shade700),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          if (selected) {
+            selectedSearchFields.add(type);
+          } else {
+            selectedSearchFields.remove(type);
+          }
+        });
+      },
+      selectedColor: Colors.blue.shade600,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white :  Colors.blue.shade900,
+        fontWeight: FontWeight.w600,
+      ),
+      backgroundColor: Colors.white,
+      side: BorderSide(
+        color: isSelected ? Colors.blue.shade600 : Colors.blue.shade300,
+        width: 1.5,
       ),
     );
   }
@@ -614,7 +704,7 @@ class _FilterSheetState extends State<FilterSheet> {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize:  16,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
