@@ -157,12 +157,12 @@ class _StartScreenState extends State<StartScreen> {
       chips.add(
         ActionChip(
           label: const Text('Alle löschen'),
-          onPressed:  () {
+          onPressed: () {
             setState(() {
-              _currentFilters = FilterData();
+              _currentFilters = null;  // ✅ null statt FilterData()
             });
           },
-          backgroundColor: Colors.red. shade100,
+          backgroundColor: Colors.red.shade100,
         ),
       );
     }

@@ -14,13 +14,13 @@ class FilterData {
   String? discipline;
   String? venue;
   DateTime? eventDate;
-  double? minLength;
+  double?  minLength;
   double? maxLength;
-  TimeOfDay? minTime;
+  TimeOfDay?  minTime;
   TimeOfDay?  maxTime;
   String? points;
   DateTime? birthDate;
-  Set<SearchFieldType> searchFields; // Neue Eigenschaft für Suchfelder
+  Set<SearchFieldType> searchFields;
 
   FilterData({
     this.lastName,
@@ -40,20 +40,19 @@ class FilterData {
   }) : searchFields = searchFields ?? {};
 
   bool get hasActiveFilters =>
-      lastName != null ||
-          firstName != null ||
+      (lastName != null && lastName! .isNotEmpty) ||
+          (firstName != null && firstName!. isNotEmpty) ||
           gender != null ||
           nationality != null ||
-          discipline != null ||
-          venue != null ||
+          (discipline != null && discipline!.isNotEmpty) ||
+          (venue != null && venue!.isNotEmpty) ||
           eventDate != null ||
-          minLength != null ||
-          maxLength != null ||
+          (minLength != null && minLength!  > 0) ||
+          (maxLength != null && maxLength!  < 100) ||
           minTime != null ||
           maxTime != null ||
-          points != null ||
-          birthDate != null ||
-          searchFields.isNotEmpty;
+          (points != null && points!.isNotEmpty) ||
+          birthDate != null;
 }
 
 class FilterSheet extends StatefulWidget {
@@ -96,15 +95,54 @@ class _FilterSheetState extends State<FilterSheet> {
   ];
 
   final List<String> disciplines = [
+    "10000m",
+    "10000m Gehen",
+    "1000m",
     "100m",
-    "200m",
-    "400m",
-    "800m",
+    "100m Huerden",
+    "10km",
+    "10km Gehen",
+    "110m Huerden",
     "1500m",
-    "Weitsprung",
+    "15km",
+    "20000m Gehen",
+    "2000m",
+    "2000m Hindernislauf",
+    "200m",
+    "20km",
+    "20km Gehen",
+    "3000m",
+    "3000m Gehen",
+    "3000m Hindernislauf",
+    "300m",
+    "30km Gehen",
+    "35km Gehen",
+    "400m",
+    "400m Huerden",
+    "4x100m",
+    "4x1500m",
+    "4x200m",
+    "4x400m",
+    "4x800m",
+    "5000m",
+    "5000m Gehen",
+    "50km Gehen",
+    "5km",
+    "5km Gehen",
+    "600m",
+    "800m",
+    "Diskuswurf",
+    "Dreisprung",
+    "Halbmarathon 21km",
+    "Hammerwurf",
     "Hochsprung",
+    "Kugelstossen",
+    "Marathon 42km",
+    "Siebenkampf",
     "Speerwurf",
-    "Kugelstoßen",
+    "Stabhochsprung",
+    "Weitsprung",
+    "Zehnkampf"
   ];
 
   @override

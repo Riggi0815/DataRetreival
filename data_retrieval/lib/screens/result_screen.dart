@@ -39,8 +39,12 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _performSearch(String query) async {
-    //Prüfe ob mindestens Text ODER Filter vorhanden sind
-    if (query.trim().isEmpty && ! (_currentFilters?. hasActiveFilters ?? false)) {
+    // ✅ Debug-Print hinzufügen
+    debugPrint('🔍 _performSearch called with query: "$query"');
+    debugPrint('🔍 _currentFilters: $_currentFilters');
+    debugPrint('🔍 hasActiveFilters: ${_currentFilters?. hasActiveFilters}');
+
+    if (query.trim().isEmpty && !(_currentFilters?.hasActiveFilters ?? false)) {
       setState(() {
         _errorMessage = 'Das Suchfeld darf nicht leer sein! ';
         _errorDetails = null;
@@ -59,19 +63,21 @@ class _ResultScreenState extends State<ResultScreen> {
     try {
       List<SearchResult> results;
 
-      //Nutze IMMER combinedSearch
+      // ✅ Nutze IMMER combinedSearch wenn Text ODER Filter vorhanden
       if (_currentFilters?.hasActiveFilters ?? false || query.trim().isNotEmpty) {
+        debugPrint('✅ Using combinedSearch');
         results = await _searchService.combinedSearch(
-          query: query,  // ✅ Text wird IMMER mitgeschickt!
+          query: query,
           firstName: _currentFilters?.firstName,
           lastName: _currentFilters?.lastName,
           gender: _currentFilters?.gender,
           nationality: _currentFilters?.nationality,
           discipline: _currentFilters?.discipline,
-          venue: _currentFilters?. venue,
+          venue: _currentFilters?.venue,
           date: _currentFilters?.eventDate,
         );
       } else {
+        debugPrint('⚠️ No search criteria - returning empty results');
         results = [];
       }
 
@@ -80,8 +86,9 @@ class _ResultScreenState extends State<ResultScreen> {
         _isLoading = false;
       });
     } catch (e, stackTrace) {
+      debugPrint('❌ Error in _performSearch: $e');
       setState(() {
-        _errorMessage = _parseErrorMessage(e. toString());
+        _errorMessage = _parseErrorMessage(e.toString());
         _errorDetails = 'Details:\n$e\n\nStacktrace:\n$stackTrace';
         _isLoading = false;
         _results = [];
@@ -135,7 +142,7 @@ class _ResultScreenState extends State<ResultScreen> {
 
   void _handleFilterApplied(FilterData filterData) {
     setState(() {
-      _currentFilters = filterData;
+      _currentFilters = filterData. hasActiveFilters ? filterData :  null;
     });
     _performSearch(searchController.text);
   }
@@ -184,7 +191,7 @@ class _ResultScreenState extends State<ResultScreen> {
   List<Widget> _buildFilterChips() {
     final chips = <Widget>[];
 
-    if (_currentFilters?. firstName != null) {
+    if (_currentFilters?.firstName != null) {
       chips.add(_buildChip('Vorname:  ${_currentFilters! .firstName}'));
     }
     if (_currentFilters?.lastName != null) {
@@ -200,7 +207,7 @@ class _ResultScreenState extends State<ResultScreen> {
       chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}'));
     }
     if (_currentFilters?.venue != null) {
-      chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
+      chips.add(_buildChip('Ort: ${_currentFilters! .venue}'));
     }
 
     // Clear all filters chip
@@ -208,10 +215,11 @@ class _ResultScreenState extends State<ResultScreen> {
       chips.add(
         ActionChip(
           label: const Text('Alle löschen'),
-          onPressed:  () {
+          onPressed: () {
             setState(() {
-              _currentFilters = FilterData();
+              _currentFilters = null;  // ✅ Setze auf null statt leeres Objekt!
             });
+            // ✅ Rufe Suche mit dem aktuellen Text auf
             _performSearch(searchController.text);
           },
           backgroundColor: Colors.red. shade100,
