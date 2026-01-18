@@ -26,7 +26,7 @@ class OpenSearchService {
             "nat"
           ],
           "type":  "best_fields",
-          "fuzziness": "AUTO"
+          "fuzziness": "0"
         }
       },
       "size": 50,
@@ -95,7 +95,6 @@ class OpenSearchService {
   }) async {
     final mustClauses = <Map<String, dynamic>>[];
 
-    // ✅ FUZZY SEARCH auf dem Suchfeld-Text (wenn nicht leer)
     if (query.trim().isNotEmpty) {
       mustClauses.add({
         "multi_match": {
@@ -108,7 +107,7 @@ class OpenSearchService {
             "nat"
           ],
           "type": "best_fields",
-          "fuzziness": "AUTO"
+          "fuzziness": "0"
         }
       });
     }
