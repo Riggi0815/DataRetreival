@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class OpenSearchService {
-  // Passe diese URL an deinen Docker-Container an
   final String baseUrl = 'http://localhost:9200'; // oder deine Docker-IP
   final String indexName = 'sport-results';
 
@@ -49,8 +48,7 @@ class OpenSearchService {
         body: body,
       );
 
-      debugPrint('📥 Response status: ${response. statusCode}');
-      debugPrint('📥 Response body:  ${response.body}');
+      debugPrint('📥 Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -59,15 +57,14 @@ class OpenSearchService {
         debugPrint('✅ Found ${hits.length} results');
 
         final results = <SearchResult>[];
-        for (var i = 0; i < hits. length; i++) {
+        for (var i = 0; i < hits.length; i++) {
           try {
-            final result = SearchResult. fromJson(hits[i]['_source'], hits[i]['_id']);
+            final result = SearchResult.fromJson(hits[i]['_source'], hits[i]['_id']);
             results.add(result);
           } catch (e, stackTrace) {
             debugPrint('❌ Error parsing result $i: $e');
             debugPrint('📄 Problematic data: ${hits[i]['_source']}');
             debugPrint('Stack trace: $stackTrace');
-            // Überspringe dieses Ergebnis, aber fahre mit den anderen fort
           }
         }
 
@@ -77,6 +74,163 @@ class OpenSearchService {
       }
     } catch (e, stackTrace) {
       debugPrint('💥 Exception in search: $e');
+      debugPrint('Stack trace: $stackTrace');
+      throw Exception('Verbindungsfehler zu OpenSearch: $e');
+    }
+  }
+
+  Future<List<SearchResult>> combinedSearch({
+    required String query,
+    String? firstName,
+    String? lastName,
+    String? gender,
+    String? nationality,
+    String? discipline,
+    String? venue,
+    DateTime? date,
+    double? minTime,
+    double? maxTime,
+    double? minDistance,
+    double? maxDistance,
+  }) async {
+    final mustClauses = <Map<String, dynamic>>[];
+
+    // ✅ FUZZY SEARCH auf dem Suchfeld-Text (wenn nicht leer)
+    if (query.trim().isNotEmpty) {
+      mustClauses.add({
+        "multi_match": {
+          "query": query,
+          "fields": [
+            "competitor^3",
+            "discipline^2",
+            "venue.city",
+            "venue.country",
+            "nat"
+          ],
+          "type": "best_fields",
+          "fuzziness": "AUTO"
+        }
+      });
+    }
+
+    // ✅ FILTER:  Nur wenn gesetzt
+    if (firstName != null && firstName.isNotEmpty) {
+      mustClauses.add({
+        "match": {"competitor":  firstName}
+      });
+    }
+
+    if (lastName != null && lastName.isNotEmpty) {
+      mustClauses.add({
+        "match": {"competitor":  lastName}
+      });
+    }
+
+    if (gender != null) {
+      mustClauses. add({
+        "term": {"gender": gender}
+      });
+    }
+
+    if (nationality != null) {
+      mustClauses.add({
+        "term": {"nat": nationality}
+      });
+    }
+
+    if (discipline != null && discipline.isNotEmpty) {
+      mustClauses.add({
+        "match": {"discipline": discipline}
+      });
+    }
+
+    if (venue != null && venue.isNotEmpty) {
+      mustClauses.add({
+        "multi_match": {
+          "query": venue,
+          "fields":  ["venue.city", "venue.venue_raw", "venue.country"]
+        }
+      });
+    }
+
+    if (date != null) {
+      mustClauses.add({
+        "match": {"date": date. toIso8601String().split('T')[0]}
+      });
+    }
+
+    if (minTime != null || maxTime != null) {
+      final rangeQuery = <String, dynamic>{};
+      if (minTime != null) rangeQuery["gte"] = minTime;
+      if (maxTime != null) rangeQuery["lte"] = maxTime;
+
+      mustClauses.add({
+        "range": {"mark. numeric_value": rangeQuery}
+      });
+    }
+
+    if (minDistance != null || maxDistance != null) {
+      final rangeQuery = <String, dynamic>{};
+      if (minDistance != null) rangeQuery["gte"] = minDistance;
+      if (maxDistance != null) rangeQuery["lte"] = maxDistance;
+
+      mustClauses.add({
+        "range": {"mark.numeric_value": rangeQuery}
+      });
+    }
+
+    final body = jsonEncode({
+      "query": {
+        "bool":  {
+          "must": mustClauses. isEmpty ? [{"match_all": {}}] : mustClauses
+        }
+      },
+      "size": 100,
+      "sort": [
+        {"world_rank": {"order": "asc", "missing": "_last"}},
+        {"date": {"order": "desc"}}
+      ]
+    });
+
+    final url = Uri.parse('$baseUrl/$indexName/_search');
+
+    try {
+      debugPrint('🔍 Combined search: $url');
+      debugPrint('📤 Request body: $body');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      debugPrint('📥 Response status: ${response.statusCode}');
+      debugPrint('📥 Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response. body);
+        final hits = data['hits']['hits'] as List;
+
+        debugPrint('✅ Found ${hits.length} results');
+
+        final results = <SearchResult>[];
+        for (var i = 0; i < hits.length; i++) {
+          try {
+            final result = SearchResult.fromJson(hits[i]['_source'], hits[i]['_id']);
+            results.add(result);
+          } catch (e, stackTrace) {
+            debugPrint('❌ Error parsing result $i: $e');
+            debugPrint('📄 Problematic data: ${hits[i]['_source']}');
+            debugPrint('Stack trace: $stackTrace');
+          }
+        }
+
+        return results;
+      } else {
+        throw Exception('OpenSearch Fehler (${response.statusCode}): ${response.body}');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('💥 Exception in combinedSearch: $e');
       debugPrint('Stack trace: $stackTrace');
       throw Exception('Verbindungsfehler zu OpenSearch: $e');
     }

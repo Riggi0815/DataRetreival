@@ -39,7 +39,8 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty && ! (_currentFilters?.hasActiveFilters ?? false)) {
+    //Prüfe ob mindestens Text ODER Filter vorhanden sind
+    if (query.trim().isEmpty && ! (_currentFilters?. hasActiveFilters ?? false)) {
       setState(() {
         _errorMessage = 'Das Suchfeld darf nicht leer sein! ';
         _errorDetails = null;
@@ -58,20 +59,18 @@ class _ResultScreenState extends State<ResultScreen> {
     try {
       List<SearchResult> results;
 
-      // Verwende erweiterte Suche wenn Filter gesetzt sind
-      if (_currentFilters?.hasActiveFilters ?? false) {
-        results = await _searchService.advancedSearch(
+      //Nutze IMMER combinedSearch
+      if (_currentFilters?.hasActiveFilters ?? false || query.trim().isNotEmpty) {
+        results = await _searchService.combinedSearch(
+          query: query,  // ✅ Text wird IMMER mitgeschickt!
           firstName: _currentFilters?.firstName,
           lastName: _currentFilters?.lastName,
           gender: _currentFilters?.gender,
           nationality: _currentFilters?.nationality,
           discipline: _currentFilters?.discipline,
-          venue: _currentFilters?.venue,
+          venue: _currentFilters?. venue,
           date: _currentFilters?.eventDate,
         );
-      } else if (query.trim().isNotEmpty) {
-        // Normale Textsuche
-        results = await _searchService.search(query);
       } else {
         results = [];
       }
