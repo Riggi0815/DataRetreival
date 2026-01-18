@@ -192,10 +192,10 @@ class _ResultScreenState extends State<ResultScreen> {
     final chips = <Widget>[];
 
     if (_currentFilters?.firstName != null) {
-      chips.add(_buildChip('Vorname:  ${_currentFilters! .firstName}'));
+      chips.add(_buildChip('Vorname:  ${_currentFilters!.firstName}'));
     }
     if (_currentFilters?.lastName != null) {
-      chips.add(_buildChip('Nachname: ${_currentFilters! .lastName}'));
+      chips.add(_buildChip('Nachname: ${_currentFilters!.lastName}'));
     }
     if (_currentFilters?.gender != null) {
       chips.add(_buildChip('Geschlecht: ${_currentFilters!.gender}'));
@@ -207,7 +207,7 @@ class _ResultScreenState extends State<ResultScreen> {
       chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}'));
     }
     if (_currentFilters?.venue != null) {
-      chips.add(_buildChip('Ort: ${_currentFilters! .venue}'));
+      chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
     }
 
     // Clear all filters chip
@@ -234,10 +234,6 @@ class _ResultScreenState extends State<ResultScreen> {
     return Chip(
       label: Text(label, style: const TextStyle(fontSize: 12)),
       backgroundColor: Colors.deepPurple.shade100,
-      //deleteIcon: const Icon(Icons.close, size: 16),
-      onDeleted: () {
-        // Implement individual filter removal if needed
-      },
     );
   }
 
