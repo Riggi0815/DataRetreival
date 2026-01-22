@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:data_retrieval/widgets/filter_sheet.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
@@ -26,7 +27,7 @@ class OpenSearchService {
             "nat"
           ],
           "type":  "best_fields",
-          "fuzziness": "0"
+          "fuzziness": "1"
         }
       },
       "size": 50,
@@ -92,27 +93,64 @@ class OpenSearchService {
     double? maxTime,
     double? minDistance,
     double? maxDistance,
+    SearchFieldType? searchField,
   }) async {
     final mustClauses = <Map<String, dynamic>>[];
 
+    debugPrint('🔍 combinedSearch called with: ');
+    debugPrint('   query: "$query"');
+    debugPrint('   query. trim().isNotEmpty: ${query.trim().isNotEmpty}');
+    debugPrint('   firstName: $firstName');
+    debugPrint('   lastName: $lastName');
+    debugPrint('   searchField: $searchField');
+
     if (query.trim().isNotEmpty) {
-      mustClauses.add({
-        "multi_match": {
-          "query": query,
-          "fields": [
-            "competitor^3",
-            "discipline^2",
-            "venue.city",
-            "venue.country",
-            "nat"
-          ],
-          "type": "best_fields",
-          "fuzziness": "0"
+
+      if (searchField != null) {
+        // Spezifisches Feld durchsuchen
+        List<String> fields = [];
+
+        switch (searchField) {
+          case SearchFieldType.competitor:
+            fields = ["competitor^3"];
+            break;
+          case SearchFieldType.country:
+            fields = ["venue.venue_raw^2"];
+            break;
+          case SearchFieldType.city:
+            fields = ["venue.city^2", "venue.country"];
+            break;
         }
-      });
+        mustClauses.add({
+          "multi_match": {
+            "query": query,
+            "fields": fields,
+            "type": "best_fields",
+            "fuzziness": "0"
+          }
+        });
+      } else {
+        // Standard:  Alle Felder durchsuchen
+        mustClauses.add({
+          "multi_match":  {
+            "query": query,
+            "fields": [
+              "competitor^3",
+              "discipline^2",
+              "venue.city",
+              "venue. country",
+              "nat"
+            ],
+            "type": "best_fields",
+            "fuzziness": "0"
+          }
+        });
+      }
+    } else {
+      debugPrint('⚠️ Query is empty, skipping multi_match');
     }
 
-    // ✅ FILTER:  Nur wenn gesetzt
+    // FILTER:  Nur wenn gesetzt
     if (firstName != null && firstName.isNotEmpty) {
       mustClauses.add({
         "match": {"competitor":  firstName}
@@ -178,10 +216,13 @@ class OpenSearchService {
       });
     }
 
+    debugPrint('📋 Final mustClauses count: ${mustClauses.length}');
+    debugPrint('📋 mustClauses: $mustClauses');
+
     final body = jsonEncode({
       "query": {
         "bool":  {
-          "must": mustClauses. isEmpty ? [{"match_all": {}}] : mustClauses
+          "must": mustClauses.isEmpty ? [{"match_all": {}}] : mustClauses
         }
       },
       "size": 100,

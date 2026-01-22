@@ -61,37 +61,27 @@ class _ResultScreenState extends State<ResultScreen> {
     });
 
     try {
-      List<SearchResult> results;
-
-      // ✅ Nutze IMMER combinedSearch wenn Text ODER Filter vorhanden
-      if (_currentFilters?.hasActiveFilters ?? false || query.trim().isNotEmpty) {
-        debugPrint('✅ Using combinedSearch');
-        results = await _searchService.combinedSearch(
-          query: query,
-          firstName: _currentFilters?.firstName,
-          lastName: _currentFilters?.lastName,
-          gender: _currentFilters?.gender,
-          nationality: _currentFilters?.nationality,
-          discipline: _currentFilters?.discipline,
-          venue: _currentFilters?.venue,
-          date: _currentFilters?.eventDate,
-        );
-      } else {
-        debugPrint('⚠️ No search criteria - returning empty results');
-        results = [];
-      }
+      final results = await _searchService.combinedSearch(
+        query: query,
+        firstName: _currentFilters?.firstName,
+        lastName: _currentFilters?.lastName,
+        gender: _currentFilters?. gender,
+        nationality: _currentFilters?.nationality,
+        discipline: _currentFilters?.discipline,
+        venue: _currentFilters?.venue,
+        date: _currentFilters?.eventDate,
+        searchField: _currentFilters?.searchField,
+      );
 
       setState(() {
         _results = results;
         _isLoading = false;
       });
-    } catch (e, stackTrace) {
-      debugPrint('❌ Error in _performSearch: $e');
+    } catch (e) {
       setState(() {
-        _errorMessage = _parseErrorMessage(e.toString());
-        _errorDetails = 'Details:\n$e\n\nStacktrace:\n$stackTrace';
+        _errorMessage = 'Fehler bei der Suche';
+        _errorDetails = e.toString();
         _isLoading = false;
-        _results = [];
       });
     }
   }
@@ -191,6 +181,60 @@ class _ResultScreenState extends State<ResultScreen> {
   List<Widget> _buildFilterChips() {
     final chips = <Widget>[];
 
+    if (_currentFilters?.searchField != null) {
+      String label = '';
+      IconData icon = Icons.search;
+
+      switch (_currentFilters! .searchField!) {
+        case SearchFieldType.competitor:
+          label = 'Suche: Sportler';
+          icon = Icons.person;
+          break;
+        case SearchFieldType.city:
+          label = 'Suche: Stadt';
+          icon = Icons.stadium;
+          break;
+        case SearchFieldType.country:
+          label = 'Suche:  Land';
+          icon = Icons.public;
+          break;
+      }
+
+      chips.add(
+        Chip(
+          avatar: Icon(icon, size: 16, color: Colors.blue.shade700),
+          label: Text(label),
+          backgroundColor: Colors.blue.shade100,
+          labelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+          deleteIcon: const Icon(Icons.close, size: 16),
+          onDeleted: () {
+            setState(() {
+              _currentFilters = FilterData(
+                firstName: _currentFilters?.firstName,
+                lastName: _currentFilters?.lastName,
+                gender: _currentFilters?.gender,
+                nationality: _currentFilters?.nationality,
+                discipline: _currentFilters?.discipline,
+                venue: _currentFilters?.venue,
+                eventDate: _currentFilters?.eventDate,
+                birthDate: _currentFilters?.birthDate,
+                minLength: _currentFilters?.minLength,
+                maxLength: _currentFilters?.maxLength,
+                minTime: _currentFilters?.minTime,
+                maxTime: _currentFilters?.maxTime,
+                points: _currentFilters?.points,
+                searchField: null,
+              );
+            });
+            _performSearch(searchController.text);
+          },
+        ),
+      );
+    }
+
     if (_currentFilters?.firstName != null) {
       chips.add(_buildChip('Vorname:  ${_currentFilters!.firstName}'));
     }
@@ -232,8 +276,16 @@ class _ResultScreenState extends State<ResultScreen> {
 
   Widget _buildChip(String label) {
     return Chip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      backgroundColor: Colors.deepPurple.shade100,
+      label: Text(label),
+      backgroundColor: Colors.grey.shade200,
+      labelStyle: const TextStyle(fontSize: 12),
+      deleteIcon: const Icon(Icons.close, size: 16),
+      onDeleted: () {
+        setState(() {
+          _currentFilters = null;
+        });
+        _performSearch(searchController.text);
+      },
     );
   }
 

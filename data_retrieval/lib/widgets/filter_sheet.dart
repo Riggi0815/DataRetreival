@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 enum SearchFieldType {
-  athlete,  // Sportler
-  stadium,  // Stadion
-  city,     // Stadt
+  competitor,  // Sportler
+  city,  // Stadt
+  country,     // Stadt
 }
 
 class FilterData {
@@ -20,7 +20,7 @@ class FilterData {
   TimeOfDay?  maxTime;
   String? points;
   DateTime? birthDate;
-  Set<SearchFieldType> searchFields;
+  SearchFieldType? searchField;
 
   FilterData({
     this.lastName,
@@ -36,8 +36,8 @@ class FilterData {
     this.maxTime,
     this.points,
     this.birthDate,
-    Set<SearchFieldType>? searchFields,
-  }) : searchFields = searchFields ?? {};
+    this.searchField,
+  });
 
   bool get hasActiveFilters =>
       (lastName != null && lastName! .isNotEmpty) ||
@@ -52,7 +52,9 @@ class FilterData {
           minTime != null ||
           maxTime != null ||
           (points != null && points!.isNotEmpty) ||
-          birthDate != null;
+          birthDate != null ||
+          searchField != null;
+
 }
 
 class FilterSheet extends StatefulWidget {
@@ -82,7 +84,7 @@ class _FilterSheetState extends State<FilterSheet> {
   TimeOfDay?  startTime;
   TimeOfDay?  endTime;
 
-  Set<SearchFieldType> selectedSearchFields = {}; // Neue State-Variable
+  SearchFieldType? selectedSearchField;
 
   final List<String> nationalities = [
     "German",
@@ -158,7 +160,7 @@ class _FilterSheetState extends State<FilterSheet> {
     selectedNationality = widget.initialFilters?.nationality;
     selectedEventDate = widget.initialFilters?.eventDate;
     selectedBirthDate = widget.initialFilters?.birthDate;
-    selectedSearchFields = widget.initialFilters?.searchFields ??  {};
+    selectedSearchField = widget.initialFilters?.searchField;
 
     if (widget.initialFilters?.minLength != null) {
       minLengthValue = widget.initialFilters!.minLength!;
@@ -580,7 +582,7 @@ class _FilterSheetState extends State<FilterSheet> {
                       points: pointsController.text.trim().isEmpty
                           ? null
                           : pointsController.text.trim(),
-                      searchFields: selectedSearchFields,
+                      searchField: selectedSearchField,
                     );
                     Navigator.pop(context, filterData);
                   },
@@ -608,7 +610,6 @@ class _FilterSheetState extends State<FilterSheet> {
     );
   }
 
-  // NEUE METHODE: Suchfelder-Sektion
   Widget _buildSearchFieldsSection() {
     return Container(
       decoration: BoxDecoration(
@@ -650,21 +651,21 @@ class _FilterSheetState extends State<FilterSheet> {
               _buildSearchFieldChip(
                 label: "Sportler",
                 icon: Icons.person,
-                type: SearchFieldType.athlete,
-              ),
-              _buildSearchFieldChip(
-                label: "Stadion",
-                icon: Icons. stadium,
-                type: SearchFieldType.stadium,
+                type: SearchFieldType.competitor,
               ),
               _buildSearchFieldChip(
                 label: "Stadt",
                 icon: Icons.location_city,
                 type: SearchFieldType.city,
               ),
+              _buildSearchFieldChip(
+                label: "Land",
+                icon: Icons.public,
+                type: SearchFieldType.country,
+              ),
             ],
           ),
-          if (selectedSearchFields.isEmpty)
+          if (selectedSearchField == null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
@@ -686,7 +687,7 @@ class _FilterSheetState extends State<FilterSheet> {
     required IconData icon,
     required SearchFieldType type,
   }) {
-    final isSelected = selectedSearchFields.contains(type);
+    final isSelected = selectedSearchField == type;
 
     return FilterChip(
       label: Row(
@@ -701,9 +702,9 @@ class _FilterSheetState extends State<FilterSheet> {
       onSelected: (selected) {
         setState(() {
           if (selected) {
-            selectedSearchFields.add(type);
+            selectedSearchField = type;
           } else {
-            selectedSearchFields.remove(type);
+            selectedSearchField = null;
           }
         });
       },
