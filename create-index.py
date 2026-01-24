@@ -46,7 +46,12 @@ index_body = {
                 "format": "strict_date_optional_time||epoch_millis||yyyy-MM-dd"
             },
             "discipline": {
-                "type": "keyword"
+                "type": "text",
+                "fields": {
+                    "keyword": {
+                        "type": "keyword"
+                    }
+                }
             },
             "dob": {
                 "type": "date",

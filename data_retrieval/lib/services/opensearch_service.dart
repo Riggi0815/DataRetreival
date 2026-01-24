@@ -22,103 +22,74 @@ class OpenSearchService {
 
     final mustClauses = <Map<String, dynamic>>[];
 
-    // Prefix-Matching basierend auf dem ausgewählten Suchfeld
+    // 🔄 GLEICHE LOGIK WIE combinedSearch
     if (searchField != null) {
+      // Spezifisches Feld durchsuchen
+      List<String> fields = [];
+
       switch (searchField) {
         case SearchFieldType.competitor:
-          mustClauses.add({
-            "match_phrase_prefix": {
-              "competitor": {
-                "query": prefix,
-                "max_expansions": 10,
-                "slop": 1
-              }
-            }
-          });
-          break;
-        case SearchFieldType.city:
-          mustClauses.add({
-            "match_phrase_prefix": {
-              "venue.city": {
-                "query": prefix,
-                "max_expansions": 10,
-                "slop": 1
-              }
-            }
-          });
+          fields = ["competitor^3"];
           break;
         case SearchFieldType.country:
-          mustClauses.add({
-            "match_phrase_prefix": {
-              "venue.country": {
-                "query": prefix,
-                "max_expansions": 10,
-                "slop": 1
-              }
-            }
-          });
+          fields = ["venue.venue_raw^2"];
+          break;
+        case SearchFieldType.city:
+          fields = ["venue.city^2", "venue.country"];
           break;
       }
-    } else {
-      // Standardsuche über mehrere Felder
+
       mustClauses.add({
-        "bool": {
-          "should": [
-            {
-              "match_phrase_prefix": {
-                "competitor": {
-                  "query": prefix,
-                  "boost": 3.0,
-                  "max_expansions": 10,
-                  "slop": 1
-                }
-              }
-            },
-            {
-              "match_phrase_prefix": {
-                "discipline": {
-                  "query": prefix,
-                  "boost": 2.0,
-                  "max_expansions": 10,
-                  "slop": 1
-                }
-              }
-            },
-            {
-              "match_phrase_prefix": {
-                "venue.city": {
-                  "query": prefix,
-                  "boost": 1.5,
-                  "max_expansions": 10,
-                  "slop": 1
-                }
-              }
-            }
+        "multi_match": {
+          "query": prefix,
+          "fields": fields,
+          "type": "best_fields",
+          "fuzziness": "0"
+        }
+      });
+    } else {
+      // Standard: Alle Felder durchsuchen
+      mustClauses.add({
+        "multi_match": {
+          "query": prefix,
+          "fields": [
+            "competitor^3",
+            "discipline^2",
+            "venue.city",
+            "venue.country",
+            "nat"
           ],
-          "minimum_should_match": 1
+          "type": "best_fields",
+          "fuzziness": "0"
         }
       });
     }
 
-    // Filter anwenden, wenn sie aktiv sind
+    // Filter hinzufügen (falls gesetzt)
     if (gender != null) {
-      mustClauses.add({"term": {"gender": gender}});
+      mustClauses.add({
+        "term": {"gender": gender}
+      });
     }
 
     if (nationality != null) {
-      mustClauses.add({"term": {"nat": nationality}});
+      mustClauses.add({
+        "term": {"nat": nationality}
+      });
     }
 
-    if (discipline != null && discipline.isNotEmpty) {
-      mustClauses.add({"match": {"discipline": discipline}});
+    if (discipline != null) {
+      mustClauses.add({
+        "term": {"discipline.keyword": discipline}
+      });
     }
 
     final body = jsonEncode({
       "query": {
         "bool": {"must": mustClauses}
       },
-      "size": 10, // Maximal 10 Vorschläge
-      "_source": ["competitor", "discipline", "venue.city", "venue.country"], // Nur relevante Felder
+      "size": 10,
+      "_source": ["competitor", "discipline", "venue.city", "venue.country"],
       "collapse": {
         "field": searchField == SearchFieldType.competitor
             ? "competitor.keyword"
@@ -209,7 +180,7 @@ class OpenSearchService {
             "nat"
           ],
           "type":  "best_fields",
-          "fuzziness": "0"
+          "fuzziness": "1"
         }
       },
       "size": 50,
