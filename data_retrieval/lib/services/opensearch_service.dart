@@ -7,8 +7,6 @@ class OpenSearchService {
   final String baseUrl = 'http://localhost:9200'; // oder deine Docker-IP
   final String indexName = 'sport-results';
 
-  // Füge diese Methode zur OpenSearchService Klasse hinzu
-
   Future<List<String>> getAutocompleteSuggestions({
     required String prefix,
     SearchFieldType? searchField,
@@ -22,50 +20,81 @@ class OpenSearchService {
 
     final mustClauses = <Map<String, dynamic>>[];
 
-    // 🔄 GLEICHE LOGIK WIE combinedSearch
+    // 🔥 MATCH_PHRASE_PREFIX für Autocomplete
     if (searchField != null) {
-      // Spezifisches Feld durchsuchen
-      List<String> fields = [];
+      String fieldName;
 
       switch (searchField) {
         case SearchFieldType.competitor:
-          fields = ["competitor^3"];
-          break;
-        case SearchFieldType.country:
-          fields = ["venue.venue_raw^2"];
+          fieldName = "competitor"; // text field
           break;
         case SearchFieldType.city:
-          fields = ["venue.city^2", "venue.country"];
+          fieldName = "venue.city.text"; // .text subfield verwenden!
           break;
+        case SearchFieldType.country:
+          fieldName = "venue.country.text"; // .text subfield verwenden!
+          break;
+        default:
+          fieldName = "competitor";
       }
 
       mustClauses.add({
-        "multi_match": {
-          "query": prefix,
-          "fields": fields,
-          "type": "best_fields",
-          "fuzziness": "0"
+        "match_phrase_prefix": {
+          fieldName: {
+            "query": prefix,
+            "max_expansions": 10,
+            "slop": 3
+          }
         }
       });
     } else {
-      // Standard: Alle Felder durchsuchen
+      // Wenn kein spezifisches Feld gewählt ist, suche in allen relevanten Feldern
       mustClauses.add({
-        "multi_match": {
-          "query": prefix,
-          "fields": [
-            "competitor^3",
-            "discipline^2",
-            "venue.city",
-            "venue.country",
-            "nat"
+        "bool": {
+          "should": [
+            {
+              "match_phrase_prefix": {
+                "competitor": {
+                  "query": prefix,
+                  "max_expansions": 10,
+                  "boost": 3
+                }
+              }
+            },
+            {
+              "match_phrase_prefix": {
+                "discipline": {
+                  "query": prefix,
+                  "max_expansions": 10,
+                  "boost": 2
+                }
+              }
+            },
+            {
+              "match_phrase_prefix": {
+                "venue.city.text": { // .text verwenden
+                  "query": prefix,
+                  "max_expansions": 10,
+                  "boost": 1
+                }
+              }
+            },
+            {
+              "match_phrase_prefix": {
+                "venue.country.text": { //.text verwenden
+                  "query": prefix,
+                  "max_expansions": 10,
+                  "boost": 1
+                }
+              }
+            }
           ],
-          "type": "best_fields",
-          "fuzziness": "0"
+          "minimum_should_match": 1
         }
       });
     }
 
-    // Filter hinzufügen (falls gesetzt)
+    // Filter hinzufügen
     if (gender != null) {
       mustClauses.add({
         "term": {"gender": gender}
@@ -94,8 +123,10 @@ class OpenSearchService {
         "field": searchField == SearchFieldType.competitor
             ? "competitor.keyword"
             : (searchField == SearchFieldType.city
-            ? "venue.city.keyword"
-            : "discipline.keyword")
+            ? "venue.city" // 🔥 keyword field für collapse
+            : (searchField == SearchFieldType.country
+            ? "venue.country" // 🔥 keyword field für collapse
+            : "discipline.keyword"))
       }
     });
 
@@ -110,6 +141,9 @@ class OpenSearchService {
         headers: {'Content-Type': 'application/json'},
         body: body,
       );
+
+      debugPrint('📥 Response status: ${response.statusCode}');
+      //debugPrint('📥 Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -144,6 +178,9 @@ class OpenSearchService {
             if (source['venue'] != null && source['venue']['city'] != null) {
               suggestions.add(source['venue']['city']);
             }
+            if (source['venue'] != null && source['venue']['country'] != null) {
+              suggestions.add(source['venue']['country']);
+            }
           }
         }
 
@@ -157,79 +194,6 @@ class OpenSearchService {
     } catch (e) {
       debugPrint('💥 Exception in autocomplete: $e');
       return [];
-    }
-  }
-
-  Future<List<SearchResult>> search(String query) async {
-    if (query.trim().isEmpty) {
-      throw Exception('Suchfeld darf nicht leer sein');
-    }
-
-    final url = Uri.parse('$baseUrl/$indexName/_search');
-
-    // Multi-Match Query für mehrere Felder
-    final body = jsonEncode({
-      "query": {
-        "multi_match": {
-          "query":  query,
-          "fields": [
-            "competitor^3",
-            "discipline^2",
-            "venue.city",
-            "venue.country",
-            "nat"
-          ],
-          "type":  "best_fields",
-          "fuzziness": "1"
-        }
-      },
-      "size": 50,
-      "sort": [
-        {"world_rank": {"order": "asc", "missing": "_last"}},
-        {"date": {"order": "desc"}}
-      ]
-    });
-
-    try {
-      debugPrint('🔍 Searching OpenSearch:  $url');
-      debugPrint('📤 Request body: $body');
-
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: body,
-      );
-
-      debugPrint('📥 Response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final hits = data['hits']['hits'] as List;
-
-        debugPrint('✅ Found ${hits.length} results');
-
-        final results = <SearchResult>[];
-        for (var i = 0; i < hits.length; i++) {
-          try {
-            final result = SearchResult.fromJson(hits[i]['_source'], hits[i]['_id']);
-            results.add(result);
-          } catch (e, stackTrace) {
-            debugPrint('❌ Error parsing result $i: $e');
-            debugPrint('📄 Problematic data: ${hits[i]['_source']}');
-            debugPrint('Stack trace: $stackTrace');
-          }
-        }
-
-        return results;
-      } else {
-        throw Exception('OpenSearch Fehler (${response.statusCode}): ${response.body}');
-      }
-    } catch (e, stackTrace) {
-      debugPrint('💥 Exception in search: $e');
-      debugPrint('Stack trace: $stackTrace');
-      throw Exception('Verbindungsfehler zu OpenSearch: $e');
     }
   }
 
@@ -268,10 +232,10 @@ class OpenSearchService {
             fields = ["competitor^3"];
             break;
           case SearchFieldType.country:
-            fields = ["venue.venue_raw^2"];
+            fields = [ "venue.country"];
             break;
           case SearchFieldType.city:
-            fields = ["venue.city^2", "venue.country"];
+            fields = ["venue.city"];
             break;
         }
         mustClauses.add({
@@ -279,7 +243,8 @@ class OpenSearchService {
             "query": query,
             "fields": fields,
             "type": "best_fields",
-            "fuzziness": "0"
+            "fuzziness": "AUTO",
+            "operator": "and"
           }
         });
       } else {
@@ -295,7 +260,8 @@ class OpenSearchService {
               "nat"
             ],
             "type": "best_fields",
-            "fuzziness": "0"
+            "fuzziness": "AUTO", 
+            "operator": "and"
           }
         });
       }
@@ -428,143 +394,6 @@ class OpenSearchService {
       throw Exception('Verbindungsfehler zu OpenSearch: $e');
     }
   }
-
-  Future<List<SearchResult>> advancedSearch({
-    String? firstName,
-    String? lastName,
-    String? gender,
-    String? nationality,
-    String? discipline,
-    String? venue,
-    DateTime? date,
-    double? minTime,
-    double? maxTime,
-    double? minDistance,
-    double? maxDistance,
-  }) async {
-    final mustClauses = <Map<String, dynamic>>[];
-
-    if (firstName != null && firstName.isNotEmpty) {
-      mustClauses.add({
-        "match": {"competitor":  firstName}
-      });
-    }
-
-    if (lastName != null && lastName.isNotEmpty) {
-      mustClauses.add({
-        "match": {"competitor": lastName}
-      });
-    }
-
-    if (gender != null) {
-      mustClauses. add({
-        "term": {"gender": gender}
-      });
-    }
-
-    if (nationality != null) {
-      mustClauses. add({
-        "term": {"nat": nationality}
-      });
-    }
-
-    if (discipline != null && discipline.isNotEmpty) {
-      mustClauses.add({
-        "match": {"discipline": discipline}
-      });
-    }
-
-    if (venue != null && venue.isNotEmpty) {
-      mustClauses.add({
-        "multi_match": {
-          "query": venue,
-          "fields":  ["venue.city", "venue. venue_raw", "venue.country"]
-        }
-      });
-    }
-
-    if (date != null) {
-      mustClauses.add({
-        "match": {"date": date. toIso8601String().split('T')[0]}
-      });
-    }
-
-    if (minTime != null || maxTime != null) {
-      final rangeQuery = <String, dynamic>{};
-      if (minTime != null) rangeQuery["gte"] = minTime;
-      if (maxTime != null) rangeQuery["lte"] = maxTime;
-
-      mustClauses.add({
-        "range": {"mark.numeric_value": rangeQuery}
-      });
-    }
-
-    if (minDistance != null || maxDistance != null) {
-      final rangeQuery = <String, dynamic>{};
-      if (minDistance != null) rangeQuery["gte"] = minDistance;
-      if (maxDistance != null) rangeQuery["lte"] = maxDistance;
-
-      mustClauses.add({
-        "range": {"mark.numeric_value": rangeQuery}
-      });
-    }
-
-    final body = jsonEncode({
-      "query": {
-        "bool":  {
-          "must": mustClauses. isEmpty ? [{"match_all": {}}] : mustClauses
-        }
-      },
-      "size": 100,
-      "sort": [
-        {"world_rank": {"order": "asc", "missing": "_last"}},
-        {"date": {"order": "desc"}}
-      ]
-    });
-
-    final url = Uri.parse('$baseUrl/$indexName/_search');
-
-    try {
-      debugPrint('🔍 Advanced search: $url');
-      debugPrint('📤 Request body:  $body');
-
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
-
-      debugPrint('📥 Response status: ${response.statusCode}');
-      debugPrint('📥 Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response. body);
-        final hits = data['hits']['hits'] as List;
-
-        debugPrint('✅ Found ${hits.length} results');
-
-        final results = <SearchResult>[];
-        for (var i = 0; i < hits.length; i++) {
-          try {
-            final result = SearchResult.fromJson(hits[i]['_source'], hits[i]['_id']);
-            results.add(result);
-          } catch (e, stackTrace) {
-            debugPrint('❌ Error parsing result $i: $e');
-            debugPrint('📄 Problematic data: ${hits[i]['_source']}');
-            debugPrint('Stack trace: $stackTrace');
-          }
-        }
-
-        return results;
-      } else {
-        throw Exception('OpenSearch Fehler (${response.statusCode}): ${response.body}');
-      }
-    } catch (e, stackTrace) {
-      debugPrint('💥 Exception in advancedSearch: $e');
-      debugPrint('Stack trace:  $stackTrace');
-      throw Exception('Verbindungsfehler zu OpenSearch: $e');
-    }
-  }
 }
 
 class SearchResult {
@@ -600,8 +429,6 @@ class SearchResult {
 
   factory SearchResult.fromJson(Map<String, dynamic> json, String documentId) {
     try {
-      debugPrint('🔄 Parsing document: $documentId');
-      debugPrint('📄 JSON data: $json');
 
       return SearchResult(
         id: documentId,
@@ -675,7 +502,6 @@ class Mark {
 
   factory Mark.fromJson(Map<String, dynamic> json, String documentId) {
     try {
-      debugPrint('🔄 Parsing Mark for document $documentId');
 
       final numericValue = _parseDouble(json['numeric_value'], 'mark.numeric_value');
 
@@ -724,7 +550,6 @@ class Position {
 
   factory Position.fromJson(Map<String, dynamic> json, String documentId) {
     try {
-      debugPrint('🔄 Parsing Position for document $documentId');
 
       final numericPos = _parseInt(json['numeric_pos'], 'pos.numeric_pos');
 
@@ -774,7 +599,6 @@ class Venue {
 
   factory Venue.fromJson(Map<String, dynamic> json, String documentId) {
     try {
-      debugPrint('🔄 Parsing Venue for document $documentId');
 
       return Venue(
         venueRaw: json['venue_raw']?.toString() ?? '',
