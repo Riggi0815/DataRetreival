@@ -7,6 +7,188 @@ class OpenSearchService {
   final String baseUrl = 'http://localhost:9200'; // oder deine Docker-IP
   final String indexName = 'sport-results';
 
+  // Füge diese Methode zur OpenSearchService Klasse hinzu
+
+  Future<List<String>> getAutocompleteSuggestions({
+    required String prefix,
+    SearchFieldType? searchField,
+    String? gender,
+    String? nationality,
+    String? discipline,
+  }) async {
+    if (prefix.trim().isEmpty) {
+      return [];
+    }
+
+    final mustClauses = <Map<String, dynamic>>[];
+
+    // Prefix-Matching basierend auf dem ausgewählten Suchfeld
+    if (searchField != null) {
+      switch (searchField) {
+        case SearchFieldType.competitor:
+          mustClauses.add({
+            "match_phrase_prefix": {
+              "competitor": {
+                "query": prefix,
+                "max_expansions": 10,
+                "slop": 1
+              }
+            }
+          });
+          break;
+        case SearchFieldType.city:
+          mustClauses.add({
+            "match_phrase_prefix": {
+              "venue.city": {
+                "query": prefix,
+                "max_expansions": 10,
+                "slop": 1
+              }
+            }
+          });
+          break;
+        case SearchFieldType.country:
+          mustClauses.add({
+            "match_phrase_prefix": {
+              "venue.country": {
+                "query": prefix,
+                "max_expansions": 10,
+                "slop": 1
+              }
+            }
+          });
+          break;
+      }
+    } else {
+      // Standardsuche über mehrere Felder
+      mustClauses.add({
+        "bool": {
+          "should": [
+            {
+              "match_phrase_prefix": {
+                "competitor": {
+                  "query": prefix,
+                  "boost": 3.0,
+                  "max_expansions": 10,
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase_prefix": {
+                "discipline": {
+                  "query": prefix,
+                  "boost": 2.0,
+                  "max_expansions": 10,
+                  "slop": 1
+                }
+              }
+            },
+            {
+              "match_phrase_prefix": {
+                "venue.city": {
+                  "query": prefix,
+                  "boost": 1.5,
+                  "max_expansions": 10,
+                  "slop": 1
+                }
+              }
+            }
+          ],
+          "minimum_should_match": 1
+        }
+      });
+    }
+
+    // Filter anwenden, wenn sie aktiv sind
+    if (gender != null) {
+      mustClauses.add({"term": {"gender": gender}});
+    }
+
+    if (nationality != null) {
+      mustClauses.add({"term": {"nat": nationality}});
+    }
+
+    if (discipline != null && discipline.isNotEmpty) {
+      mustClauses.add({"match": {"discipline": discipline}});
+    }
+
+    final body = jsonEncode({
+      "query": {
+        "bool": {"must": mustClauses}
+      },
+      "size": 10, // Maximal 10 Vorschläge
+      "_source": ["competitor", "discipline", "venue.city", "venue.country"], // Nur relevante Felder
+      "collapse": {
+        "field": searchField == SearchFieldType.competitor
+            ? "competitor.keyword"
+            : (searchField == SearchFieldType.city
+            ? "venue.city.keyword"
+            : "discipline.keyword")
+      }
+    });
+
+    final url = Uri.parse('$baseUrl/$indexName/_search');
+
+    try {
+      debugPrint('🔍 Autocomplete search: $url');
+      debugPrint('📤 Request body: $body');
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final hits = data['hits']['hits'] as List;
+
+        final suggestions = <String>{};
+
+        for (var hit in hits) {
+          final source = hit['_source'];
+
+          // Je nach Suchfeld die passenden Vorschläge extrahieren
+          if (searchField == SearchFieldType.competitor) {
+            if (source['competitor'] != null) {
+              suggestions.add(source['competitor']);
+            }
+          } else if (searchField == SearchFieldType.city) {
+            if (source['venue'] != null && source['venue']['city'] != null) {
+              suggestions.add(source['venue']['city']);
+            }
+          } else if (searchField == SearchFieldType.country) {
+            if (source['venue'] != null && source['venue']['country'] != null) {
+              suggestions.add(source['venue']['country']);
+            }
+          } else {
+            // Alle relevanten Felder sammeln
+            if (source['competitor'] != null) {
+              suggestions.add(source['competitor']);
+            }
+            if (source['discipline'] != null) {
+              suggestions.add(source['discipline']);
+            }
+            if (source['venue'] != null && source['venue']['city'] != null) {
+              suggestions.add(source['venue']['city']);
+            }
+          }
+        }
+
+        final result = suggestions.take(10).toList();
+        debugPrint('✅ Found ${result.length} suggestions');
+        return result;
+      } else {
+        debugPrint('❌ Autocomplete error: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('💥 Exception in autocomplete: $e');
+      return [];
+    }
+  }
+
   Future<List<SearchResult>> search(String query) async {
     if (query.trim().isEmpty) {
       throw Exception('Suchfeld darf nicht leer sein');
@@ -27,7 +209,7 @@ class OpenSearchService {
             "nat"
           ],
           "type":  "best_fields",
-          "fuzziness": "1"
+          "fuzziness": "0"
         }
       },
       "size": 50,
