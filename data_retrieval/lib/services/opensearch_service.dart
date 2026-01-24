@@ -244,7 +244,6 @@ class OpenSearchService {
             "fields": fields,
             "type": "best_fields",
             "fuzziness": "AUTO",
-            "operator": "and"
           }
         });
       } else {
@@ -260,8 +259,7 @@ class OpenSearchService {
               "nat"
             ],
             "type": "best_fields",
-            "fuzziness": "AUTO", 
-            "operator": "and"
+            "fuzziness": "AUTO",
           }
         });
       }
@@ -345,10 +343,6 @@ class OpenSearchService {
         }
       },
       "size": 100,
-      "sort": [
-        {"world_rank": {"order": "asc", "missing": "_last"}},
-        {"date": {"order": "desc"}}
-      ]
     });
 
     final url = Uri.parse('$baseUrl/$indexName/_search');
