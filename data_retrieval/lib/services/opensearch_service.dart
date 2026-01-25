@@ -206,6 +206,7 @@ class OpenSearchService {
     String? discipline,
     String? venue,
     DateTime? date,
+    DateTime? birthDate,
     double? minTime,
     double? maxTime,
     double? minDistance,
@@ -310,6 +311,12 @@ class OpenSearchService {
     if (date != null) {
       mustClauses.add({
         "match": {"date": date. toIso8601String().split('T')[0]}
+      });
+    }
+
+    if (birthDate != null) {
+      mustClauses.add({
+        "match": {"dob": birthDate.toIso8601String().split('T')[0]}
       });
     }
 

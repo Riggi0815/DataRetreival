@@ -70,6 +70,7 @@ class _ResultScreenState extends State<ResultScreen> {
         discipline: _currentFilters?.discipline,
         venue: _currentFilters?.venue,
         date: _currentFilters?.eventDate,
+        birthDate: _currentFilters?.birthDate,
         searchField: _currentFilters?.searchField,
       );
 
