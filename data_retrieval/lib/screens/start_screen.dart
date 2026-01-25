@@ -14,11 +14,11 @@ class _StartScreenState extends State<StartScreen> {
   final TextEditingController searchController = TextEditingController();
   FilterData? _currentFilters;
 
-  void _handleSearch(String value) {
+  void _handleSearch(String value) async {  // <-- async hinzufügen
     if (value.trim().isEmpty && !(_currentFilters?.hasActiveFilters ?? false)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Das Suchfeld darf nicht leer sein! '),
+          content: Text('Das Suchfeld darf nicht leer sein!'),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 2),
         ),
@@ -26,7 +26,8 @@ class _StartScreenState extends State<StartScreen> {
       return;
     }
 
-    Navigator.push(
+    // Navigation mit await - wartet auf Rückgabe
+    final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (_) => ResultScreen(
@@ -35,6 +36,18 @@ class _StartScreenState extends State<StartScreen> {
         ),
       ),
     );
+
+    // Wenn Daten zurückkommen, übernehme sie
+    if (result != null) {
+      setState(() {
+        if (result['query'] != null) {
+          searchController.text = result['query'];
+        }
+        if (result['filters'] != null) {
+          _currentFilters = result['filters'];
+        }
+      });
+    }
   }
 
   void _handleFilterApplied(FilterData filterData) {
@@ -113,11 +126,12 @@ class _StartScreenState extends State<StartScreen> {
   List<Widget> _buildFilterChips() {
     final chips = <Widget>[];
 
+    // SearchField Chip
     if (_currentFilters?.searchField != null) {
       String label = '';
       IconData icon = Icons.search;
 
-      switch (_currentFilters! .searchField!) {
+      switch (_currentFilters!.searchField!) {
         case SearchFieldType.competitor:
           label = 'Suche: Sportler';
           icon = Icons.person;
@@ -127,7 +141,7 @@ class _StartScreenState extends State<StartScreen> {
           icon = Icons.stadium;
           break;
         case SearchFieldType.country:
-          label = 'Suche:  Land';
+          label = 'Suche: Land';
           icon = Icons.public;
           break;
       }
@@ -158,7 +172,7 @@ class _StartScreenState extends State<StartScreen> {
                 minTime: _currentFilters?.minTime,
                 maxTime: _currentFilters?.maxTime,
                 points: _currentFilters?.points,
-                searchField: null,
+                searchField: null, // <-- Nur searchField löschen
               );
             });
           },
@@ -167,52 +181,271 @@ class _StartScreenState extends State<StartScreen> {
     }
 
     if (_currentFilters?.firstName != null) {
-      chips.add(_buildChip('Vorname:  ${_currentFilters! .firstName}'));
-    }
-    if (_currentFilters?.lastName != null) {
-      chips.add(_buildChip('Nachname: ${_currentFilters! .lastName}'));
-    }
-    if (_currentFilters?.gender != null) {
-      final genderLabel = _currentFilters!.gender == 'm' ? 'Männlich' : 'Weiblich';
-      chips.add(_buildChip('Geschlecht: $genderLabel'));
-    }
-    if (_currentFilters?.nationality != null) {
-      chips.add(_buildChip('Nationalität: ${_currentFilters! .nationality}'));
-    }
-    if (_currentFilters?.discipline != null) {
-      chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}'));
-    }
-    if (_currentFilters?.venue != null) {
-      chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
-    }
-    if (_currentFilters?.eventDate != null) {
-      final date = _currentFilters!.eventDate! ;
-      chips.add(_buildChip('Datum: ${date. day}. ${date.month}.${date. year}'));
-    }
-    if (_currentFilters?.birthDate != null) {
-      final date = _currentFilters!. birthDate!;
-      chips. add(_buildChip('Geburtstag: ${date.day}.${date.month}.${date.year}'));
-    }
-    if (_currentFilters?.minLength != null || _currentFilters?.maxLength != null) {
-      final min = _currentFilters?. minLength ?? 0;
-      final max = _currentFilters?. maxLength ?? 100;
-      chips.add(_buildChip('Länge: ${min.toInt()}-${max.toInt()}m'));
-    }
-    if (_currentFilters?.minTime != null || _currentFilters?. maxTime != null) {
-      chips.add(_buildChip('Zeit gefiltert'));
-    }
-    if (_currentFilters?.points != null) {
-      chips.add(_buildChip('Punkte: ${_currentFilters! .points}'));
+      chips.add(_buildChip('Vorname: ${_currentFilters!.firstName}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: null, // <-- Nur firstName löschen
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
     }
 
-    // Clear all filters chip
+    if (_currentFilters?.lastName != null) {
+      chips.add(_buildChip('Nachname: ${_currentFilters!.lastName}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: null, // <-- Nur lastName löschen
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.gender != null) {
+      final genderLabel = _currentFilters!.gender == 'm' ? 'Männlich' : 'Weiblich';
+      chips.add(_buildChip('Geschlecht: $genderLabel', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: null, // <-- Nur gender löschen
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.nationality != null) {
+      chips.add(_buildChip('Nationalität: ${_currentFilters!.nationality}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: null, // <-- Nur nationality löschen
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.discipline != null) {
+      chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: null, // <-- Nur discipline löschen
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.venue != null) {
+      chips.add(_buildChip('Ort: ${_currentFilters!.venue}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: null, // <-- Nur venue löschen
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.eventDate != null) {
+      final date = _currentFilters!.eventDate!;
+      chips.add(_buildChip('Datum: ${date.day}.${date.month}.${date.year}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: null, // <-- Nur eventDate löschen
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.birthDate != null) {
+      final date = _currentFilters!.birthDate!;
+      chips.add(_buildChip('Geburtstag: ${date.day}.${date.month}.${date.year}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: null, // <-- Nur birthDate löschen
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.minLength != null || _currentFilters?.maxLength != null) {
+      final min = _currentFilters?.minLength ?? 0;
+      final max = _currentFilters?.maxLength ?? 100;
+      chips.add(_buildChip('Länge: ${min.toInt()}-${max.toInt()}m', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: null, // <-- Länge löschen
+            maxLength: null,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.minTime != null || _currentFilters?.maxTime != null) {
+      chips.add(_buildChip('Zeit gefiltert', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: null, // <-- Zeit löschen
+            maxTime: null,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.points != null) {
+      chips.add(_buildChip('Punkte: ${_currentFilters!.points}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: null, // <-- Nur points löschen
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    // Clear all filters chip (nur wenn es andere Chips gibt)
     if (chips.isNotEmpty) {
       chips.add(
         ActionChip(
           label: const Text('Alle löschen'),
           onPressed: () {
             setState(() {
-              _currentFilters = null;  // ✅ null statt FilterData()
+              _currentFilters = null;  // Alle Filter löschen
             });
           },
           backgroundColor: Colors.red.shade100,
@@ -223,7 +456,8 @@ class _StartScreenState extends State<StartScreen> {
     return chips;
   }
 
-  Widget _buildChip(String label) {
+// Aktualisiere die _buildChip Methode mit onDeleted Parameter
+  Widget _buildChip(String label, VoidCallback onDeleted) {
     return Chip(
       label: Text(
         label,
@@ -233,10 +467,8 @@ class _StartScreenState extends State<StartScreen> {
         ),
       ),
       backgroundColor: Colors.deepPurple.shade100,
-      side: BorderSide(
-        color: Colors.deepPurple.shade200,
-        width: 1,
-      ),
+      deleteIcon: const Icon(Icons.close, size: 16),
+      onDeleted: onDeleted, // <-- Callback hinzufügen
     );
   }
 

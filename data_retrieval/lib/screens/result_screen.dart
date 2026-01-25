@@ -140,23 +140,41 @@ class _ResultScreenState extends State<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F7FB),
-      appBar: AppBar(
-        title: const Text("Suchergebnisse"),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 16),
-
-          // SearchBar mit Filter
-          CustomSearchBar(
-            controller: searchController,
-            onSubmitted:  _handleSearch,
-            onFilterApplied: _handleFilterApplied,
-            currentFilters: _currentFilters,
+    return WillPopScope(  // <-- Füge WillPopScope hinzu
+        onWillPop: () async {
+          // Gib Suchtext und Filter zurück beim Zurücknavigieren
+          Navigator.pop(context, {
+            'query': searchController.text,
+            'filters': _currentFilters,
+          });
+          return false; // false, weil wir bereits pop aufgerufen haben
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF6F7FB),
+          appBar: AppBar(
+            title: const Text("Suchergebnisse"),
+            centerTitle: true,
+            leading: IconButton(  // <-- Überschreibe den Back-Button
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context, {
+                  'query': searchController.text,
+                  'filters': _currentFilters,
+                });
+              },
+            ),
           ),
+          body: Column(
+            children: [
+              const SizedBox(height: 16),
+
+              // SearchBar mit Filter
+              CustomSearchBar(
+                controller: searchController,
+                onSubmitted: _handleSearch,
+                onFilterApplied: _handleFilterApplied,
+                currentFilters: _currentFilters,
+              ),
 
           const SizedBox(height: 8),
 
@@ -176,17 +194,19 @@ class _ResultScreenState extends State<ResultScreen> {
           ),
         ],
       ),
+    )
     );
   }
 
   List<Widget> _buildFilterChips() {
     final chips = <Widget>[];
 
+    // SearchField Chip
     if (_currentFilters?.searchField != null) {
       String label = '';
       IconData icon = Icons.search;
 
-      switch (_currentFilters! .searchField!) {
+      switch (_currentFilters!.searchField!) {
         case SearchFieldType.competitor:
           label = 'Suche: Sportler';
           icon = Icons.person;
@@ -196,7 +216,7 @@ class _ResultScreenState extends State<ResultScreen> {
           icon = Icons.stadium;
           break;
         case SearchFieldType.country:
-          label = 'Suche:  Land';
+          label = 'Suche: Land';
           icon = Icons.public;
           break;
       }
@@ -227,51 +247,283 @@ class _ResultScreenState extends State<ResultScreen> {
                 minTime: _currentFilters?.minTime,
                 maxTime: _currentFilters?.maxTime,
                 points: _currentFilters?.points,
-                searchField: null,
+                searchField: null, // <-- Nur searchField löschen
               );
             });
-            _performSearch(searchController.text);
           },
         ),
       );
     }
 
     if (_currentFilters?.firstName != null) {
-      chips.add(_buildChip('Vorname:  ${_currentFilters!.firstName}'));
-    }
-    if (_currentFilters?.lastName != null) {
-      chips.add(_buildChip('Nachname: ${_currentFilters!.lastName}'));
-    }
-    if (_currentFilters?.gender != null) {
-      chips.add(_buildChip('Geschlecht: ${_currentFilters!.gender}'));
-    }
-    if (_currentFilters?. nationality != null) {
-      chips.add(_buildChip('Nationalität: ${_currentFilters!.nationality}'));
-    }
-    if (_currentFilters?. discipline != null) {
-      chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}'));
-    }
-    if (_currentFilters?.venue != null) {
-      chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
-    }
-    if (_currentFilters?.birthDate != null) {
-      final date = _currentFilters!. birthDate!;
-      chips. add(_buildChip('Geburtstag: ${date.day}.${date.month}.${date.year}'));
+      chips.add(_buildChip('Vorname: ${_currentFilters!.firstName}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: null, // <-- Nur firstName löschen
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
     }
 
-    // Clear all filters chip
+    if (_currentFilters?.lastName != null) {
+      chips.add(_buildChip('Nachname: ${_currentFilters!.lastName}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: null, // <-- Nur lastName löschen
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.gender != null) {
+      final genderLabel = _currentFilters!.gender == 'm' ? 'Männlich' : 'Weiblich';
+      chips.add(_buildChip('Geschlecht: $genderLabel', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: null, // <-- Nur gender löschen
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.nationality != null) {
+      chips.add(_buildChip('Nationalität: ${_currentFilters!.nationality}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: null, // <-- Nur nationality löschen
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.discipline != null) {
+      chips.add(_buildChip('Disziplin: ${_currentFilters!.discipline}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: null, // <-- Nur discipline löschen
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.venue != null) {
+      chips.add(_buildChip('Ort: ${_currentFilters!.venue}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: null, // <-- Nur venue löschen
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.eventDate != null) {
+      final date = _currentFilters!.eventDate!;
+      chips.add(_buildChip('Datum: ${date.day}.${date.month}.${date.year}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: null, // <-- Nur eventDate löschen
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.birthDate != null) {
+      final date = _currentFilters!.birthDate!;
+      chips.add(_buildChip('Geburtstag: ${date.day}.${date.month}.${date.year}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: null, // <-- Nur birthDate löschen
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.minLength != null || _currentFilters?.maxLength != null) {
+      final min = _currentFilters?.minLength ?? 0;
+      final max = _currentFilters?.maxLength ?? 100;
+      chips.add(_buildChip('Länge: ${min.toInt()}-${max.toInt()}m', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: null, // <-- Länge löschen
+            maxLength: null,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.minTime != null || _currentFilters?.maxTime != null) {
+      chips.add(_buildChip('Zeit gefiltert', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: null, // <-- Zeit löschen
+            maxTime: null,
+            points: _currentFilters?.points,
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    if (_currentFilters?.points != null) {
+      chips.add(_buildChip('Punkte: ${_currentFilters!.points}', () {
+        setState(() {
+          _currentFilters = FilterData(
+            firstName: _currentFilters?.firstName,
+            lastName: _currentFilters?.lastName,
+            gender: _currentFilters?.gender,
+            nationality: _currentFilters?.nationality,
+            discipline: _currentFilters?.discipline,
+            venue: _currentFilters?.venue,
+            eventDate: _currentFilters?.eventDate,
+            birthDate: _currentFilters?.birthDate,
+            minLength: _currentFilters?.minLength,
+            maxLength: _currentFilters?.maxLength,
+            minTime: _currentFilters?.minTime,
+            maxTime: _currentFilters?.maxTime,
+            points: null, // <-- Nur points löschen
+            searchField: _currentFilters?.searchField,
+          );
+        });
+      }));
+    }
+
+    // Clear all filters chip (nur wenn es andere Chips gibt)
     if (chips.isNotEmpty) {
       chips.add(
         ActionChip(
           label: const Text('Alle löschen'),
           onPressed: () {
             setState(() {
-              _currentFilters = null;  // ✅ Setze auf null statt leeres Objekt!
+              _currentFilters = null;  // Alle Filter löschen
             });
-            // ✅ Rufe Suche mit dem aktuellen Text auf
-            _performSearch(searchController.text);
           },
-          backgroundColor: Colors.red. shade100,
+          backgroundColor: Colors.red.shade100,
         ),
       );
     }
@@ -279,18 +531,19 @@ class _ResultScreenState extends State<ResultScreen> {
     return chips;
   }
 
-  Widget _buildChip(String label) {
+// Aktualisiere die _buildChip Methode mit onDeleted Parameter
+  Widget _buildChip(String label, VoidCallback onDeleted) {
     return Chip(
-      label: Text(label),
-      backgroundColor: Colors.grey.shade200,
-      labelStyle: const TextStyle(fontSize: 12),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      backgroundColor: Colors.deepPurple.shade100,
       deleteIcon: const Icon(Icons.close, size: 16),
-      onDeleted: () {
-        setState(() {
-          _currentFilters = null;
-        });
-        _performSearch(searchController.text);
-      },
+      onDeleted: onDeleted, // <-- Callback hinzufügen
     );
   }
 
