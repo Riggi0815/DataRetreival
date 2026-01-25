@@ -70,6 +70,7 @@ class _FilterSheetState extends State<FilterSheet> {
   late TextEditingController lastNameController;
   late TextEditingController firstNameController;
   late TextEditingController disciplineController;
+  late TextEditingController nationalityController;
   late TextEditingController venueController;
   late TextEditingController pointsController;
 
@@ -86,15 +87,224 @@ class _FilterSheetState extends State<FilterSheet> {
 
   SearchFieldType? selectedSearchField;
 
-  final List<String> nationalities = [
-    "German",
-    "Spanish",
-    "French",
-    "Japanese",
-    "American",
-    "British",
-    "Italian",
-  ];
+  final Map<String, String> nationalityMap = {
+    "Niederländische Antillen (historisch)": "AHO",
+    "Anguilla": "AIA",
+    "Albanien": "ALB",
+    "Algerien": "ALG",
+    "Neutrale Athleten (Sonderteam)": "ANA",
+    "Andorra": "AND",
+    "Angola": "ANG",
+    "Antigua und Barbuda": "ANT",
+    "Argentinien": "ARG",
+    "Armenien": "ARM",
+    "Vereintes Arabisches Team (historisch, 1992)": "ART",
+    "Aruba": "ARU",
+    "Amerikanisch-Samoa": "ASA",
+    "Australien": "AUS",
+    "Österreich": "AUT",
+    "Aserbaidschan": "AZE",
+
+    "Bahamas": "BAH",
+    "Bangladesch": "BAN",
+    "Barbados": "BAR",
+    "Burundi": "BDI",
+    "Belgien": "BEL",
+    "Benin": "BEN",
+    "Bermuda": "BER",
+    "Bosnien und Herzegowina": "BIH",
+    "Belize": "BIZ",
+    "Belarus (Weißrussland)": "BLR",
+    "Bolivien": "BOL",
+    "Botswana": "BOT",
+    "Brasilien": "BRA",
+    "Bahrain": "BRN",
+    "Bulgarien": "BUL",
+    "Burkina Faso": "BUR",
+
+    "Zentralafrikanische Republik": "CAF",
+    "Kanada": "CAN",
+    "Cayman Islands": "CAY",
+    "Republik Kongo": "CGO",
+    "Tschad": "CHA",
+    "Chile": "CHI",
+    "China": "CHN",
+    "Elfenbeinküste": "CIV",
+    "Kamerun": "CMR",
+    "Demokratische Republik Kongo": "COD",
+    "Kolumbien": "COL",
+    "Komoren": "COM",
+    "Kap Verde": "CPV",
+    "Costa Rica": "CRC",
+    "Kroatien": "CRO",
+    "Kuba": "CUB",
+    "Zypern": "CYP",
+    "Tschechien": "CZE",
+
+    "Dänemark": "DEN",
+    "Dschibuti": "DJI",
+    "Dominica": "DMA",
+    "Dominikanische Republik": "DOM",
+
+    "Ecuador": "ECU",
+    "Ägypten": "EGY",
+    "Eritrea": "ERI",
+    "El Salvador": "ESA",
+    "Spanien": "ESP",
+    "Estland": "EST",
+    "Äthiopien": "ETH",
+    "Vereintes Team (historisch, 1992)": "EUN",
+
+    "Fidschi": "FIJ",
+    "Finnland": "FIN",
+    "Frankreich": "FRA",
+    "Bundesrepublik Deutschland (historisch)": "FRG",
+
+    "Gabun": "GAB",
+    "Gambia": "GAM",
+    "Großbritannien": "GBR",
+    "Deutsche Demokratische Republik (historisch)": "GDR",
+    "Georgien": "GEO",
+    "Deutschland": "GER",
+    "Ghana": "GHA",
+    "Griechenland": "GRE",
+    "Grenada": "GRN",
+    "Guatemala": "GUA",
+    "Guinea": "GUI",
+    "Guyana": "GUY",
+
+    "Haiti": "HAI",
+    "Hongkong (Sonderverwaltungszone)": "HKG",
+    "Honduras": "HON",
+    "Ungarn": "HUN",
+
+    "Indonesien": "INA",
+    "Indien": "IND",
+    "Unabhängige Athleten (Sonderteam)": "INT",
+    "Iran": "IRI",
+    "Irland": "IRL",
+    "Irak": "IRQ",
+    "Island": "ISL",
+    "Israel": "ISR",
+    "Amerikanische Jungferninseln": "ISV",
+    "Italien": "ITA",
+    "Britische Jungferninseln": "IVB",
+
+    "Jamaika": "JAM",
+    "Jordanien": "JOR",
+    "Japan": "JPN",
+
+    "Kasachstan": "KAZ",
+    "Kenia": "KEN",
+    "Kirgisistan": "KGZ",
+    "Südkorea": "KOR",
+    "Saudi-Arabien": "KSA",
+    "Kuwait": "KUW",
+
+    "Lettland": "LAT",
+    "Libyen": "LBA",
+    "Libanon": "LBN",
+    "Liberia": "LBR",
+    "St. Lucia": "LCA",
+    "Lesotho": "LES",
+    "Litauen": "LTU",
+    "Luxemburg": "LUX",
+
+    "Madagaskar": "MAD",
+    "Marokko": "MAR",
+    "Malaysia": "MAS",
+    "Malawi": "MAW",
+    "Moldau": "MDA",
+    "Mexiko": "MEX",
+    "Mongolei": "MGL",
+    "Mali": "MLI",
+    "Malta": "MLT",
+    "Montenegro": "MNE",
+    "Mosambik": "MOZ",
+    "Mauritius": "MRI",
+    "Myanmar": "MYA",
+
+    "Namibia": "NAM",
+    "Nicaragua": "NCA",
+    "Niederlande": "NED",
+    "Nigeria": "NGR",
+    "Niger": "NIG",
+    "Norwegen": "NOR",
+    "Neuseeland": "NZL",
+
+    "Oman": "OMA",
+
+    "Pakistan": "PAK",
+    "Panama": "PAN",
+    "Paraguay": "PAR",
+    "Peru": "PER",
+    "Philippinen": "PHI",
+    "Palästina": "PLE",
+    "Papua-Neuguinea": "PNG",
+    "Polen": "POL",
+    "Portugal": "POR",
+    "Nordkorea": "PRK",
+    "Puerto Rico": "PUR",
+
+    "Katar": "QAT",
+
+    "Rumänien": "ROU",
+    "Südafrika": "RSA",
+    "Russland": "RUS",
+    "Ruanda": "RWA",
+
+    "Samoa": "SAM",
+    "Serbien und Montenegro (historisch)": "SCG",
+    "Senegal": "SEN",
+    "Seychellen": "SEY",
+    "Singapur": "SGP",
+    "St. Kitts und Nevis": "SKN",
+    "Sierra Leone": "SLE",
+    "Slowenien": "SLO",
+    "San Marino": "SMR",
+    "Somalia": "SOM",
+    "Serbien": "SRB",
+    "Sri Lanka": "SRI",
+    "Südsudan": "SSD",
+    "São Tomé und Príncipe": "STP",
+    "Sudan": "SUD",
+    "Schweiz": "SUI",
+    "Suriname": "SUR",
+    "Slowakei": "SVK",
+    "Schweden": "SWE",
+    "Eswatini (ehemals Swasiland)": "SWZ",
+    "Syrien": "SYR",
+
+    "Tansania": "TAN",
+    "Tonga": "TGA",
+    "Thailand": "THA",
+    "Tadschikistan": "TJK",
+    "Turkmenistan": "TKM",
+    "Turks- und Caicosinseln": "TKS",
+    "Togo": "TOG",
+    "Chinesisch Taipeh (Taiwan)": "TPE",
+    "Trinidad und Tobago": "TTO",
+    "Tunesien": "TUN",
+    "Türkei": "TUR",
+
+    "Vereinigte Arabische Emirate": "UAE",
+    "Uganda": "UGA",
+    "Ukraine": "UKR",
+    "Sowjetunion (historisch)": "URS",
+    "Uruguay": "URU",
+    "Vereinigte Staaten von Amerika": "USA",
+    "Usbekistan": "UZB",
+
+    "Venezuela": "VEN",
+    "Vietnam": "VIE",
+    "St. Vincent und die Grenadinen": "VIN",
+
+    "Jugoslawien (historisch)": "YUG",
+
+    "Sambia": "ZAM",
+    "Simbabwe": "ZIM"
+  };
+
 
   final List<String> disciplines = [
     "10000m",
@@ -156,6 +366,12 @@ class _FilterSheetState extends State<FilterSheet> {
     venueController = TextEditingController(text: widget.initialFilters?.venue);
     pointsController = TextEditingController(text: widget. initialFilters?.points);
 
+    nationalityController = TextEditingController(
+        text: widget.initialFilters?.nationality != null
+            ? _getNationalityDisplayName(widget.initialFilters!.nationality!)
+            : ''
+    );
+
     selectedGender = widget.initialFilters?. gender;
     selectedNationality = widget.initialFilters?.nationality;
     selectedEventDate = widget.initialFilters?.eventDate;
@@ -180,7 +396,16 @@ class _FilterSheetState extends State<FilterSheet> {
     disciplineController.dispose();
     venueController.dispose();
     pointsController.dispose();
+    nationalityController.dispose();
     super.dispose();
+  }
+  String? _getNationalityDisplayName(String abbreviation) {
+    return nationalityMap.entries
+        .firstWhere(
+          (entry) => entry.value == abbreviation,
+      orElse: () => MapEntry(abbreviation, abbreviation),
+    )
+        .key;
   }
 
   @override
@@ -228,8 +453,9 @@ class _FilterSheetState extends State<FilterSheet> {
               // Person Section
               _buildSectionCard(
                 icon: Icons.person,
-                title: "Person",
+                title: "Person Filter",
                 children: [
+                  /*
                   TextField(
                     controller: lastNameController,
                     decoration:  const InputDecoration(
@@ -239,7 +465,7 @@ class _FilterSheetState extends State<FilterSheet> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
+                  */
                   // Geschlecht & Nationalität Row
                   Row(
                     children: [
@@ -272,28 +498,41 @@ class _FilterSheetState extends State<FilterSheet> {
                               "Nationalität",
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: FontWeight. w500,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                             const SizedBox(height: 4),
-                            DropdownButtonFormField<String>(
-                              value: selectedNationality,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 12,
-                                ),
-                              ),
-                              items: nationalities
-                                  .map((n) => DropdownMenuItem(
-                                value: n,
-                                child: Text(n),
-                              ))
-                                  .toList(),
-                              onChanged: (v) => setState(() => selectedNationality = v),
-                              hint: const Text("Auswählen"),
+                            Autocomplete<String>(
+                              initialValue: TextEditingValue(text: nationalityController.text),
+                              optionsBuilder: (textEditingValue) {
+                                if (textEditingValue.text.isEmpty) {
+                                  return nationalityMap.keys; // Zeige alle Länder
+                                }
+                                return nationalityMap.keys.where((countryName) =>
+                                    countryName.toLowerCase().contains(
+                                        textEditingValue.text.toLowerCase()
+                                    )
+                                );
+                              },
+                              onSelected: (value) {
+                                nationalityController.text = value;
+                                selectedNationality = value;
+                              },
+                              fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+                                return TextField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  decoration: const InputDecoration(
+                                    hintText: "Land eingeben oder suchen",
+                                    border: OutlineInputBorder(),
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -341,7 +580,7 @@ class _FilterSheetState extends State<FilterSheet> {
               // Sportliche xyz Section
               _buildSectionCard(
                 icon: Icons.sports,
-                title: "Sportliche xyz",
+                title: "Wettkampf Filter",
                 children: [
                   // Disziplin
                   Autocomplete<String>(
@@ -434,6 +673,7 @@ class _FilterSheetState extends State<FilterSheet> {
                       const SizedBox(width: 16),
 
                       // Werte Section
+                      /*
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,8 +700,10 @@ class _FilterSheetState extends State<FilterSheet> {
                           ],
                         ),
                       ),
+                      */
                     ],
                   ),
+                  /*
                   const SizedBox(height: 12),
 
                   // Längenangabe in Meter
@@ -548,9 +790,9 @@ class _FilterSheetState extends State<FilterSheet> {
                     ),
                     keyboardType: TextInputType. number,
                   ),
+                  */
                 ],
               ),
-
               const SizedBox(height: 24),
 
               // Daten übernehmen Button
@@ -566,7 +808,9 @@ class _FilterSheetState extends State<FilterSheet> {
                           ? null
                           : firstNameController.text.trim(),
                       gender: selectedGender,
-                      nationality: selectedNationality,
+                      nationality: selectedNationality != null
+                          ? nationalityMap[selectedNationality]
+                          : null,
                       discipline: disciplineController.text.trim().isEmpty
                           ? null
                           : disciplineController.text.trim(),

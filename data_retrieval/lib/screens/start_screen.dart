@@ -113,6 +113,59 @@ class _StartScreenState extends State<StartScreen> {
   List<Widget> _buildFilterChips() {
     final chips = <Widget>[];
 
+    if (_currentFilters?.searchField != null) {
+      String label = '';
+      IconData icon = Icons.search;
+
+      switch (_currentFilters! .searchField!) {
+        case SearchFieldType.competitor:
+          label = 'Suche: Sportler';
+          icon = Icons.person;
+          break;
+        case SearchFieldType.city:
+          label = 'Suche: Stadt';
+          icon = Icons.stadium;
+          break;
+        case SearchFieldType.country:
+          label = 'Suche:  Land';
+          icon = Icons.public;
+          break;
+      }
+
+      chips.add(
+        Chip(
+          avatar: Icon(icon, size: 16, color: Colors.blue.shade700),
+          label: Text(label),
+          backgroundColor: Colors.blue.shade100,
+          labelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+          ),
+          deleteIcon: const Icon(Icons.close, size: 16),
+          onDeleted: () {
+            setState(() {
+              _currentFilters = FilterData(
+                firstName: _currentFilters?.firstName,
+                lastName: _currentFilters?.lastName,
+                gender: _currentFilters?.gender,
+                nationality: _currentFilters?.nationality,
+                discipline: _currentFilters?.discipline,
+                venue: _currentFilters?.venue,
+                eventDate: _currentFilters?.eventDate,
+                birthDate: _currentFilters?.birthDate,
+                minLength: _currentFilters?.minLength,
+                maxLength: _currentFilters?.maxLength,
+                minTime: _currentFilters?.minTime,
+                maxTime: _currentFilters?.maxTime,
+                points: _currentFilters?.points,
+                searchField: null,
+              );
+            });
+          },
+        ),
+      );
+    }
+
     if (_currentFilters?.firstName != null) {
       chips.add(_buildChip('Vorname:  ${_currentFilters! .firstName}'));
     }

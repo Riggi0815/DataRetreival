@@ -63,7 +63,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
       return;
     }
 
-    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 100), () {
       _fetchSuggestions(text);
     });
   }

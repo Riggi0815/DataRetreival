@@ -29,7 +29,7 @@ class DetailScreen extends StatelessWidget {
                 _buildDetailRow("Name", result.competitor),
                 _buildDetailRow("Geschlecht", _formatGender(result.gender)),
                 _buildDetailRow("Nationalität", result.nat),
-                if (result.dob != null) _buildDetailRow("Geburtsdatum", result.dob!),
+                if (result.dob != null) _buildDetailRow("Geburtsdatum", _formatDate(result.dob!)),
                 if (result. ageAtCompetition != null)
                   _buildDetailRow("Alter bei Wettkampf", "${result. ageAtCompetition} Jahre"),
                 if (result.worldRank != null)
@@ -139,7 +139,7 @@ class DetailScreen extends StatelessWidget {
     try {
       final parts = date.split('-');
       if (parts.length == 3) {
-        return "${parts[2]}. ${parts[1]}.${parts[0]}";
+        return "${parts[2]}.${parts[1]}.${parts[0]}";
       }
       return date;
     } catch (e) {

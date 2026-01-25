@@ -253,6 +253,10 @@ class _ResultScreenState extends State<ResultScreen> {
     if (_currentFilters?.venue != null) {
       chips.add(_buildChip('Ort: ${_currentFilters!.venue}'));
     }
+    if (_currentFilters?.birthDate != null) {
+      final date = _currentFilters!. birthDate!;
+      chips. add(_buildChip('Geburtstag: ${date.day}.${date.month}.${date.year}'));
+    }
 
     // Clear all filters chip
     if (chips.isNotEmpty) {
@@ -423,7 +427,7 @@ class _ResultScreenState extends State<ResultScreen> {
               final result = _results[i];
               return ResultCard(
                 title: result.competitor,
-                subtitle: "${result.discipline} • ${_getAgeCategory(result. ageAtCompetition)}",
+                subtitle: "${result.discipline} • ${result. ageAtCompetition} Jahre",
                 meta: "${result.mark. displayValue} • ${result.venue.city} • ${result.venue.country} • ${_formatDate(result.date)}",
                 icon: Icons.person,
                 onTap: () {

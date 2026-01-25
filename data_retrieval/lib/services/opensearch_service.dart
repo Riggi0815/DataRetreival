@@ -123,9 +123,9 @@ class OpenSearchService {
         "field": searchField == SearchFieldType.competitor
             ? "competitor.keyword"
             : (searchField == SearchFieldType.city
-            ? "venue.city" // 🔥 keyword field für collapse
+            ? "venue.city" // keyword field für collapse
             : (searchField == SearchFieldType.country
-            ? "venue.country" // 🔥 keyword field für collapse
+            ? "venue.country" // keyword field für collapse
             : "discipline.keyword"))
       }
     });
