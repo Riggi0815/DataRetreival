@@ -227,7 +227,7 @@ class _StartScreenState extends State<StartScreen> {
     }
 
     if (_currentFilters?.gender != null) {
-      final genderLabel = _currentFilters!.gender == 'm' ? 'Männlich' : 'Weiblich';
+      final genderLabel = _currentFilters!.gender == 'Men' ? 'Männlich' : 'Weiblich';
       chips.add(_buildChip('Geschlecht: $genderLabel', () {
         setState(() {
           _currentFilters = FilterData(
