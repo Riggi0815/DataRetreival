@@ -39,7 +39,6 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   Future<void> _performSearch(String query) async {
-    // ✅ Debug-Print hinzufügen
     debugPrint('🔍 _performSearch called with query: "$query"');
     debugPrint('🔍 _currentFilters: $_currentFilters');
     debugPrint('🔍 hasActiveFilters: ${_currentFilters?. hasActiveFilters}');
@@ -543,7 +542,7 @@ class _ResultScreenState extends State<ResultScreen> {
       ),
       backgroundColor: Colors.deepPurple.shade100,
       deleteIcon: const Icon(Icons.close, size: 16),
-      onDeleted: onDeleted, // <-- Callback hinzufügen
+      onDeleted: onDeleted,
     );
   }
 

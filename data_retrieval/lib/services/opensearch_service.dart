@@ -20,7 +20,7 @@ class OpenSearchService {
 
     final mustClauses = <Map<String, dynamic>>[];
 
-    // 🔥 MATCH_PHRASE_PREFIX für Autocomplete
+    // MATCH_PHRASE_PREFIX für Autocomplete
     if (searchField != null) {
       String fieldName;
 
@@ -133,8 +133,8 @@ class OpenSearchService {
     final url = Uri.parse('$baseUrl/$indexName/_search');
 
     try {
-      debugPrint('🔍 Autocomplete search: $url');
-      debugPrint('📤 Request body: $body');
+      debugPrint(' Autocomplete search: $url');
+      debugPrint(' Request body: $body');
 
       final response = await http.post(
         url,
@@ -142,8 +142,8 @@ class OpenSearchService {
         body: body,
       );
 
-      debugPrint('📥 Response status: ${response.statusCode}');
-      //debugPrint('📥 Response body: ${response.body}');
+      debugPrint('Response status: ${response.statusCode}');
+      //debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -185,14 +185,14 @@ class OpenSearchService {
         }
 
         final result = suggestions.take(10).toList();
-        debugPrint('✅ Found ${result.length} suggestions');
+        debugPrint('Found ${result.length} suggestions');
         return result;
       } else {
-        debugPrint('❌ Autocomplete error: ${response.statusCode}');
+        debugPrint('Autocomplete error: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      debugPrint('💥 Exception in autocomplete: $e');
+      debugPrint('Exception in autocomplete: $e');
       return [];
     }
   }
@@ -215,7 +215,7 @@ class OpenSearchService {
   }) async {
     final mustClauses = <Map<String, dynamic>>[];
 
-    debugPrint('🔍 combinedSearch called with: ');
+    debugPrint('   combinedSearch called with: ');
     debugPrint('   query: "$query"');
     debugPrint('   query. trim().isNotEmpty: ${query.trim().isNotEmpty}');
     debugPrint('   firstName: $firstName');
@@ -265,7 +265,7 @@ class OpenSearchService {
         });
       }
     } else {
-      debugPrint('⚠️ Query is empty, skipping multi_match');
+      debugPrint(' Query is empty, skipping multi_match');
     }
 
     // FILTER:  Nur wenn gesetzt
@@ -355,8 +355,8 @@ class OpenSearchService {
     final url = Uri.parse('$baseUrl/$indexName/_search');
 
     try {
-      debugPrint('🔍 Combined search: $url');
-      debugPrint('📤 Request body: $body');
+      debugPrint(' Combined search: $url');
+      debugPrint(' Request body: $body');
 
       final response = await http.post(
         url,
@@ -364,14 +364,14 @@ class OpenSearchService {
         body: body,
       );
 
-      debugPrint('📥 Response status: ${response.statusCode}');
-      debugPrint('📥 Response body: ${response.body}');
+      debugPrint(' Response status: ${response.statusCode}');
+      debugPrint(' Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response. body);
         final hits = data['hits']['hits'] as List;
 
-        debugPrint('✅ Found ${hits.length} results');
+        debugPrint(' Found ${hits.length} results');
 
         final results = <SearchResult>[];
         for (var i = 0; i < hits.length; i++) {
@@ -379,8 +379,8 @@ class OpenSearchService {
             final result = SearchResult.fromJson(hits[i]['_source'], hits[i]['_id']);
             results.add(result);
           } catch (e, stackTrace) {
-            debugPrint('❌ Error parsing result $i: $e');
-            debugPrint('📄 Problematic data: ${hits[i]['_source']}');
+            debugPrint(' Error parsing result $i: $e');
+            debugPrint(' Problematic data: ${hits[i]['_source']}');
             debugPrint('Stack trace: $stackTrace');
           }
         }
@@ -390,7 +390,7 @@ class OpenSearchService {
         throw Exception('OpenSearch Fehler (${response.statusCode}): ${response.body}');
       }
     } catch (e, stackTrace) {
-      debugPrint('💥 Exception in combinedSearch: $e');
+      debugPrint(' Exception in combinedSearch: $e');
       debugPrint('Stack trace: $stackTrace');
       throw Exception('Verbindungsfehler zu OpenSearch: $e');
     }
@@ -447,8 +447,8 @@ class SearchResult {
         wind: _parseNullableDouble(json['wind'], 'wind'),
       );
     } catch (e, stackTrace) {
-      debugPrint('❌ Error in SearchResult.fromJson for document $documentId: $e');
-      debugPrint('📄 JSON:  $json');
+      debugPrint(' Error in SearchResult.fromJson for document $documentId: $e');
+      debugPrint(' JSON:  $json');
       debugPrint('Stack trace: $stackTrace');
       rethrow;
     }
@@ -461,11 +461,11 @@ class SearchResult {
       try {
         return int.parse(value);
       } catch (e) {
-        debugPrint('⚠️ Could not parse "$value" as int for field $fieldName');
+        debugPrint(' Could not parse "$value" as int for field $fieldName');
         return null;
       }
     }
-    debugPrint('⚠️ Unexpected type ${value.runtimeType} for int field $fieldName:  $value');
+    debugPrint(' Unexpected type ${value.runtimeType} for int field $fieldName:  $value');
     return null;
   }
 
@@ -477,11 +477,11 @@ class SearchResult {
       try {
         return double.parse(value);
       } catch (e) {
-        debugPrint('⚠️ Could not parse "$value" as double for field $fieldName');
+        debugPrint(' Could not parse "$value" as double for field $fieldName');
         return null;
       }
     }
-    debugPrint('⚠️ Unexpected type ${value.runtimeType} for double field $fieldName: $value');
+    debugPrint(' Unexpected type ${value.runtimeType} for double field $fieldName: $value');
     return null;
   }
 }
@@ -514,8 +514,8 @@ class Mark {
         formatType:  json['format_type']?.toString() ?? '',
       );
     } catch (e, stackTrace) {
-      debugPrint('❌ Error in Mark.fromJson for document $documentId: $e');
-      debugPrint('📄 JSON: $json');
+      debugPrint(' Error in Mark.fromJson for document $documentId: $e');
+      debugPrint(' JSON: $json');
       debugPrint('Stack trace:  $stackTrace');
       rethrow;
     }
@@ -529,11 +529,11 @@ class Mark {
       try {
         return double.parse(value);
       } catch (e) {
-        debugPrint('⚠️ Could not parse "$value" as double for field $fieldName, using 0.0');
+        debugPrint(' Could not parse "$value" as double for field $fieldName, using 0.0');
         return 0.0;
       }
     }
-    debugPrint('⚠️ Unexpected type ${value.runtimeType} for double field $fieldName: $value, using 0.0');
+    debugPrint(' Unexpected type ${value.runtimeType} for double field $fieldName: $value, using 0.0');
     return 0.0;
   }
 }
@@ -560,8 +560,8 @@ class Position {
         group: json['group']?.toString() ?? '',
       );
     } catch (e, stackTrace) {
-      debugPrint('❌ Error in Position.fromJson for document $documentId: $e');
-      debugPrint('📄 JSON: $json');
+      debugPrint(' Error in Position.fromJson for document $documentId: $e');
+      debugPrint(' JSON: $json');
       debugPrint('Stack trace:  $stackTrace');
       rethrow;
     }
@@ -574,11 +574,11 @@ class Position {
       try {
         return int. parse(value);
       } catch (e) {
-        debugPrint('⚠️ Could not parse "$value" as int for field $fieldName, using 0');
+        debugPrint(' Could not parse "$value" as int for field $fieldName, using 0');
         return 0;
       }
     }
-    debugPrint('⚠️ Unexpected type ${value.runtimeType} for int field $fieldName: $value, using 0');
+    debugPrint(' Unexpected type ${value.runtimeType} for int field $fieldName: $value, using 0');
     return 0;
   }
 }
@@ -609,8 +609,8 @@ class Venue {
         extra: json['extra']?.toString() ?? '',
       );
     } catch (e, stackTrace) {
-      debugPrint('❌ Error in Venue.fromJson for document $documentId: $e');
-      debugPrint('📄 JSON: $json');
+      debugPrint(' Error in Venue.fromJson for document $documentId: $e');
+      debugPrint(' JSON: $json');
       debugPrint('Stack trace: $stackTrace');
       rethrow;
     }

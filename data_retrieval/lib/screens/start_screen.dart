@@ -445,7 +445,7 @@ class _StartScreenState extends State<StartScreen> {
           label: const Text('Alle löschen'),
           onPressed: () {
             setState(() {
-              _currentFilters = null;  // Alle Filter löschen
+              _currentFilters = null;
             });
           },
           backgroundColor: Colors.red.shade100,
@@ -468,7 +468,7 @@ class _StartScreenState extends State<StartScreen> {
       ),
       backgroundColor: Colors.deepPurple.shade100,
       deleteIcon: const Icon(Icons.close, size: 16),
-      onDeleted: onDeleted, // <-- Callback hinzufügen
+      onDeleted: onDeleted,
     );
   }
 
